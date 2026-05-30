@@ -1,0 +1,38 @@
+# ===== 의존성 / 빌드 산출물 =====
+node_modules/
+dist/
+build/
+.vite/
+*.local
+
+# ===== 환경변수 · 시크릿 (절대 커밋 금지 — CLAUDE.md 6-B) =====
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials*.json
+secret*
+
+# ===== 고객 개인정보 · 첨부 실물 (구글 드라이브 백엔드, 저장소 금지) =====
+uploads/
+attachments/
+*.고객정보.*
+
+# ===== 로그 =====
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== OS / 에디터 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ===== 테스트 / 캐시 =====
+coverage/
+.cache/
