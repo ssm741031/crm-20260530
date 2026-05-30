@@ -1,7 +1,21 @@
 import { useMemo, useState } from "react";
 import type { TaskInput } from "../api";
-import type { Category, Customer, Task, TimeType } from "../types";
+import type {
+  Category,
+  Customer,
+  Reminder,
+  RepeatType,
+  Task,
+  TimeType,
+} from "../types";
 import { TIME_OPTIONS, toSortKey } from "../utils/time";
+import {
+  MAX_REMINDERS,
+  REMINDER_ACTIONS,
+  REMINDER_PRESETS,
+  REPEAT_OPTIONS,
+  WEEKDAYS,
+} from "../utils/repeat";
 import "./TaskForm.css";
 
 interface Props {
@@ -38,6 +52,9 @@ export default function TaskForm({
   const [endTime, setEndTime] = useState(task?.endTime ?? "10:00");
   const [tags, setTags] = useState<string[]>(task?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
+  const [repeat, setRepeat] = useState<RepeatType>(task?.repeat ?? "none");
+  const [repeatDays, setRepeatDays] = useState<number[]>(task?.repeatDays ?? []);
+  const [reminders, setReminders] = useState<Reminder[]>(task?.reminders ?? []);
   const [error, setError] = useState("");
 
   // 카테고리 드롭다운 옵션(부모>자식 들여쓰기)
@@ -62,6 +79,36 @@ export default function TaskForm({
     setTags(tags.filter((x) => x !== t));
   }
 
+  // ----- 반복 -----
+  function changeRepeat(next: RepeatType) {
+    setRepeat(next);
+    if (next !== "weekly_days") setRepeatDays([]); // 요일 지정 아니면 비움
+  }
+  function toggleWeekday(day: number) {
+    setRepeatDays((prev) =>
+      prev.includes(day)
+        ? prev.filter((d) => d !== day)
+        : [...prev, day].sort((a, b) => a - b)
+    );
+  }
+
+  // ----- 알람 (최대 5) -----
+  function addReminder() {
+    setReminders((prev) =>
+      prev.length >= MAX_REMINDERS
+        ? prev
+        : [...prev, { minutesBefore: 0, action: "알람만" }]
+    );
+  }
+  function updateReminder(idx: number, patch: Partial<Reminder>) {
+    setReminders((prev) =>
+      prev.map((r, i) => (i === idx ? { ...r, ...patch } : r))
+    );
+  }
+  function removeReminder(idx: number) {
+    setReminders((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   function handleSave() {
     if (!title.trim()) {
       setError("제목을 입력하세요.");
@@ -81,6 +128,10 @@ export default function TaskForm({
         return;
       }
     }
+    if (repeat === "weekly_days" && repeatDays.length === 0) {
+      setError("요일 지정 반복은 요일을 1개 이상 선택하세요.");
+      return;
+    }
 
     // 이번 스프린트에서 편집하지 않는 필드는 기존값(수정) 또는 기본값(생성) 유지
     const input: TaskInput = {
@@ -92,10 +143,10 @@ export default function TaskForm({
       startTime: timeType === "range" ? startTime : null,
       endDate,
       endTime,
-      repeat: task?.repeat ?? "none",
-      repeatDays: task?.repeatDays ?? [],
-      autoRegen: task?.autoRegen ?? false,
-      reminders: task?.reminders ?? [],
+      repeat,
+      repeatDays: repeat === "weekly_days" ? repeatDays : [],
+      autoRegen: task?.autoRegen ?? false, // 자동재생성은 Sprint 06
+      reminders,
       tags,
       share: task?.share ?? { scope: "private", sharedWith: [], permission: {} },
       attachments: task?.attachments ?? [],
@@ -271,10 +322,125 @@ export default function TaskForm({
             </div>
           </div>
 
+          {/* 반복 */}
+          <div className="field">
+            <span className="field__label">반복</span>
+            <select
+              className="field__input"
+              value={repeat}
+              onChange={(e) => changeRepeat(e.target.value as RepeatType)}
+            >
+              {REPEAT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {repeat === "weekly_days" && (
+              <div className="weekday-row">
+                {WEEKDAYS.map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    className={
+                      "weekday" +
+                      (repeatDays.includes(d.value) ? " weekday--on" : "")
+                    }
+                    onClick={() => toggleWeekday(d.value)}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 알람 (최대 5) */}
+          <div className="field">
+            <span className="field__label">
+              알람 ({reminders.length}/{MAX_REMINDERS})
+            </span>
+            {reminders.map((r, i) => {
+              const isPreset = REMINDER_PRESETS.some(
+                (p) => p.value === r.minutesBefore
+              );
+              return (
+                <div className="reminder-row" key={i}>
+                  <select
+                    className="field__input"
+                    value={isPreset ? String(r.minutesBefore) : "custom"}
+                    onChange={(e) =>
+                      updateReminder(i, {
+                        minutesBefore:
+                          e.target.value === "custom"
+                            ? 45
+                            : Number(e.target.value),
+                      })
+                    }
+                  >
+                    {REMINDER_PRESETS.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
+                    <option value="custom">직접 입력(분)</option>
+                  </select>
+                  {!isPreset && (
+                    <input
+                      type="number"
+                      min={0}
+                      className="field__input reminder-mins"
+                      value={r.minutesBefore}
+                      onChange={(e) =>
+                        updateReminder(i, {
+                          minutesBefore: Math.max(0, Number(e.target.value)),
+                        })
+                      }
+                      title="마감 몇 분 전"
+                    />
+                  )}
+                  <select
+                    className="field__input"
+                    value={r.action}
+                    onChange={(e) =>
+                      updateReminder(i, {
+                        action: e.target.value as Reminder["action"],
+                      })
+                    }
+                  >
+                    {REMINDER_ACTIONS.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="reminder-del"
+                    onClick={() => removeReminder(i)}
+                    aria-label="알람 삭제"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              className="btn reminder-add"
+              onClick={addReminder}
+              disabled={reminders.length >= MAX_REMINDERS}
+            >
+              + 알람 추가
+            </button>
+            <span className="reminder-hint">
+              알람은 설정만 저장됩니다(실제 발송은 다음 단계). 작업완료는 알람에서
+              직접 눌러야 완료 — 자동 완료 안 됨.
+            </span>
+          </div>
+
           {/* 다음 스프린트 자리표시 */}
-          <p className="form__note">
-            🔜 반복 · 알람 · 공유 · 첨부는 다음 단계에서 추가됩니다.
-          </p>
+          <p className="form__note">🔜 공유 · 첨부는 다음 단계에서 추가됩니다.</p>
 
           {error && <p className="form__error">{error}</p>}
         </div>

@@ -137,6 +137,59 @@
   background: none;
 }
 
+/* 반복 — 요일 지정 */
+.weekday-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+.weekday {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.weekday--on {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* 알람 */
+.reminder-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.reminder-row .field__input {
+  flex: 1;
+}
+.reminder-mins {
+  max-width: 90px;
+  flex: 0 0 auto;
+}
+.reminder-del {
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+}
+.reminder-add {
+  align-self: flex-start;
+}
+.reminder-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
 .form__note {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
