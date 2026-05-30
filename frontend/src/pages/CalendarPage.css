@@ -104,6 +104,17 @@
   font-size: 12px;
   text-align: left;
   overflow: hidden;
+  touch-action: none; /* 모바일 드래그 시 스크롤 가로채기 방지 */
+  cursor: grab;
+}
+
+/* 드래그 드롭 대상 하이라이트 */
+.cal-cell.is-dragover,
+.cal-week__body.is-dragover,
+.cal-day__row.is-dragover {
+  background: var(--color-primary-soft);
+  outline: 2px dashed var(--color-primary);
+  outline-offset: -2px;
 }
 .cal-chip__mark {
   color: var(--chip);
@@ -257,6 +268,8 @@
   padding: 4px var(--space-2);
   font-size: 12px;
   text-align: left;
+  touch-action: none;
+  cursor: grab;
 }
 .cal-bar.is-range {
   border-left-style: double;

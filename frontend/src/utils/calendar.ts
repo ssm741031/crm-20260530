@@ -88,6 +88,34 @@ export function tasksOnDate(tasks: Task[], iso: string): Task[] {
     .sort((a, b) => (a.endTime ?? "").localeCompare(b.endTime ?? ""));
 }
 
+// ===== 드래그(Sprint 09) 헬퍼 =====
+
+/** isoB - isoA 의 일수 차 (정수, B가 뒤면 양수) */
+export function diffDays(isoA: string, isoB: string): number {
+  const ms = parseDate(isoB).getTime() - parseDate(isoA).getTime();
+  return Math.round(ms / 86400000);
+}
+
+/** "HH:MM" → 분 */
+export function timeToMin(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+/** 분 → "HH:MM" (24h) */
+export function minToTime(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+/** 15분 단위로 스냅 (계획서 §5.1) */
+export function snap15(min: number): number {
+  return Math.round(min / 15) * 15;
+}
+/** 분을 [loHour, hiHour] 운영시간 경계로 클램프 */
+export function clampMin(min: number, loHour: number, hiHour: number): number {
+  return Math.max(loHour * 60, Math.min(hiHour * 60, min));
+}
+
 /** 보기 제어 필터 (§5.5) */
 export interface CalFilters {
   showDone: boolean; // 완료 표시

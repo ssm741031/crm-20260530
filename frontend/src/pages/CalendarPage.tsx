@@ -6,16 +6,26 @@ import {
   addDays,
   addMonths,
   applyFilters,
+  clampMin,
+  diffDays,
+  minToTime,
   MONTH_LABELS,
   monthMatrix,
   parseDate,
+  snap15,
   tasksOnDate,
+  timeToMin,
   todayIso,
   WEEKDAY_LABELS,
   weekDates,
   ymd,
 } from "../utils/calendar";
+import { usePointerDrag } from "../hooks/usePointerDrag";
 import "./CalendarPage.css";
+
+type DragPayload = { kind: "date" | "time"; task: Task };
+const DAY_LO = 7; // 운영시간 하한(시)
+const DAY_HI = 21; // 운영시간 상한(시)
 
 type View = "day" | "week" | "month" | "year";
 const DAY_HOURS = Array.from({ length: 15 }, (_, i) => i + 7); // 운영시간 07~21시
@@ -77,6 +87,63 @@ export default function CalendarPage() {
     setNewDate(date);
     setEditing("new");
   }
+
+  // ----- 드래그(Sprint 09): 칩 날짜 이동 / 일간 시각 이동 (Pointer Event) -----
+  const [overDate, setOverDate] = useState<string | null>(null);
+  const [overHour, setOverHour] = useState<number | null>(null);
+
+  function onDragMove(x: number, y: number) {
+    const el = document.elementFromPoint(x, y);
+    const dc = el?.closest("[data-date]");
+    setOverDate(dc ? dc.getAttribute("data-date") : null);
+    const hr = el?.closest("[data-hour]");
+    setOverHour(hr ? Number(hr.getAttribute("data-hour")) : null);
+  }
+
+  function onDragDrop(p: DragPayload, x: number, y: number) {
+    setOverDate(null);
+    setOverHour(null);
+    const el = document.elementFromPoint(x, y);
+    const t = p.task;
+    if (p.kind === "date") {
+      const target = el?.closest("[data-date]")?.getAttribute("data-date");
+      if (!target) return;
+      if (t.timeType === "range" && t.startDate && t.endDate) {
+        const delta = diffDays(t.endDate, target);
+        if (delta === 0) return;
+        api
+          .updateTask(t.id, {
+            startDate: addDays(t.startDate, delta),
+            endDate: addDays(t.endDate, delta),
+          })
+          .then(refresh);
+      } else {
+        if (t.endDate === target) return;
+        api.updateTask(t.id, { endDate: target }).then(refresh);
+      }
+    } else {
+      const row = el?.closest("[data-hour]");
+      if (!row) return;
+      const hour = Number(row.getAttribute("data-hour"));
+      const rect = row.getBoundingClientRect();
+      const frac = Math.min(0.999, Math.max(0, (y - rect.top) / rect.height));
+      const min = clampMin(snap15(hour * 60 + frac * 60), DAY_LO, DAY_HI);
+      if (t.timeType === "range" && t.startTime && t.endTime) {
+        const delta = min - timeToMin(t.startTime);
+        if (delta === 0) return;
+        api
+          .updateTask(t.id, {
+            startTime: minToTime(timeToMin(t.startTime) + delta),
+            endTime: minToTime(timeToMin(t.endTime) + delta),
+          })
+          .then(refresh);
+      } else {
+        api.updateTask(t.id, { endTime: minToTime(min) }).then(refresh);
+      }
+    }
+  }
+
+  const drag = usePointerDrag<DragPayload>(onDragDrop, onDragMove);
 
   // ----- 헤더 이동 -----
   function move(dir: -1 | 1) {
@@ -208,8 +275,10 @@ export default function CalendarPage() {
         key={t.id}
         className={"cal-chip" + (t.done ? " is-done" : "")}
         style={{ "--chip": catColor(t.categoryId) } as React.CSSProperties}
+        onPointerDown={(e) => drag.start(e, { kind: "date", task: t })}
         onClick={(e) => {
           e.stopPropagation();
+          if (drag.didDrag()) return; // 드래그면 편집 열지 않음
           setEditing(t);
         }}
         title={`${catName(t.categoryId)} · ${t.title}`}
@@ -241,10 +310,12 @@ export default function CalendarPage() {
               return (
                 <div
                   key={cell.date}
+                  data-date={cell.date}
                   className={
                     "cal-cell" +
                     (cell.inMonth ? "" : " is-out") +
-                    (isToday ? " is-today" : "")
+                    (isToday ? " is-today" : "") +
+                    (drag.dragging && overDate === cell.date ? " is-dragover" : "")
                   }
                   onDoubleClick={() => openNew(cell.date)}
                   title="더블클릭하면 새 할 일"
@@ -288,7 +359,11 @@ export default function CalendarPage() {
                 {WEEKDAY_LABELS[d.getDay()]} {d.getDate()}
               </button>
               <div
-                className="cal-week__body"
+                data-date={date}
+                className={
+                  "cal-week__body" +
+                  (drag.dragging && overDate === date ? " is-dragover" : "")
+                }
                 onDoubleClick={() => openNew(date)}
               >
                 {tasksOnDate(filtered, date).map((t) => chip(t))}
@@ -323,7 +398,14 @@ export default function CalendarPage() {
         {DAY_HOURS.map((h) => {
           const inHour = dayTasks.filter((t) => hourOf(t) === h);
           return (
-            <div className="cal-day__row" key={h}>
+            <div
+              className={
+                "cal-day__row" +
+                (drag.dragging && overHour === h ? " is-dragover" : "")
+              }
+              key={h}
+              data-hour={h}
+            >
               <div className="cal-day__h">{String(h).padStart(2, "0")}:00</div>
               <div
                 className="cal-day__slot"
@@ -338,7 +420,11 @@ export default function CalendarPage() {
                       (t.timeType === "range" ? " is-range" : "")
                     }
                     style={{ "--chip": catColor(t.categoryId) } as React.CSSProperties}
-                    onClick={() => setEditing(t)}
+                    onPointerDown={(e) => drag.start(e, { kind: "time", task: t })}
+                    onClick={() => {
+                      if (drag.didDrag()) return;
+                      setEditing(t);
+                    }}
                   >
                     {t.timeType === "range"
                       ? `${t.startTime}~${t.endTime} `
