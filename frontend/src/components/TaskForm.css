@@ -173,6 +173,25 @@
   max-width: 90px;
   flex: 0 0 auto;
 }
+/* 직접 입력 일·시·분 */
+.reminder-dhm {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+.reminder-dhm .field__input {
+  flex: 0 0 auto;
+  width: 46px;
+  padding: var(--space-2) 4px;
+  text-align: center;
+}
+.reminder-unit {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-right: 2px;
+}
 .reminder-del {
   flex: 0 0 auto;
   border: 1px solid var(--color-border);

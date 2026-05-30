@@ -10,10 +10,12 @@ import type {
 } from "../types";
 import { TIME_OPTIONS, toSortKey } from "../utils/time";
 import {
+  combineOffset,
   MAX_REMINDERS,
   REMINDER_ACTIONS,
   REMINDER_PRESETS,
   REPEAT_OPTIONS,
+  splitOffset,
   WEEKDAYS,
 } from "../utils/repeat";
 import {
@@ -535,22 +537,69 @@ export default function TaskForm({
                         {p.label}
                       </option>
                     ))}
-                    <option value="custom">직접 입력(분)</option>
+                    <option value="custom">직접 입력(일·시·분)</option>
                   </select>
-                  {!isPreset && (
-                    <input
-                      type="number"
-                      min={0}
-                      className="field__input reminder-mins"
-                      value={r.minutesBefore}
-                      onChange={(e) =>
-                        updateReminder(i, {
-                          minutesBefore: Math.max(0, Number(e.target.value)),
-                        })
-                      }
-                      title="마감 몇 분 전"
-                    />
-                  )}
+                  {!isPreset &&
+                    (() => {
+                      const { d, h, m } = splitOffset(r.minutesBefore);
+                      return (
+                        <div className="reminder-dhm">
+                          <input
+                            type="number"
+                            min={0}
+                            className="field__input reminder-num"
+                            value={d}
+                            onChange={(e) =>
+                              updateReminder(i, {
+                                minutesBefore: combineOffset(
+                                  Math.max(0, Number(e.target.value)),
+                                  h,
+                                  m
+                                ),
+                              })
+                            }
+                            title="며칠 전"
+                          />
+                          <span className="reminder-unit">일</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={23}
+                            className="field__input reminder-num"
+                            value={h}
+                            onChange={(e) =>
+                              updateReminder(i, {
+                                minutesBefore: combineOffset(
+                                  d,
+                                  Math.max(0, Number(e.target.value)),
+                                  m
+                                ),
+                              })
+                            }
+                            title="몇 시간 전"
+                          />
+                          <span className="reminder-unit">시</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={59}
+                            className="field__input reminder-num"
+                            value={m}
+                            onChange={(e) =>
+                              updateReminder(i, {
+                                minutesBefore: combineOffset(
+                                  d,
+                                  h,
+                                  Math.max(0, Number(e.target.value))
+                                ),
+                              })
+                            }
+                            title="몇 분 전"
+                          />
+                          <span className="reminder-unit">분</span>
+                        </div>
+                      );
+                    })()}
                   <select
                     className="field__input"
                     value={r.action}
