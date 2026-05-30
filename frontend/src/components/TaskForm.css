@@ -190,6 +190,37 @@
   color: var(--color-text-muted);
 }
 
+/* 자동 재생성 */
+.regen-input {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.regen-input .field__input {
+  flex: 1;
+}
+.regen-mins {
+  max-width: 90px;
+  flex: 0 0 auto;
+}
+.regen-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+.regen-preview__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+.regen-preview__k {
+  color: var(--color-text-muted);
+}
+
 .form__note {
   font-size: var(--text-sm);
   color: var(--color-text-muted);

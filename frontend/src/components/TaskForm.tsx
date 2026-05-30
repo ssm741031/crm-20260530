@@ -16,6 +16,12 @@ import {
   REPEAT_OPTIONS,
   WEEKDAYS,
 } from "../utils/repeat";
+import {
+  canAutoRegen,
+  computeRegenDates,
+  LEAD_PRESETS,
+  NOTICE_PRESETS,
+} from "../utils/regen";
 import "./TaskForm.css";
 
 interface Props {
@@ -55,7 +61,17 @@ export default function TaskForm({
   const [repeat, setRepeat] = useState<RepeatType>(task?.repeat ?? "none");
   const [repeatDays, setRepeatDays] = useState<number[]>(task?.repeatDays ?? []);
   const [reminders, setReminders] = useState<Reminder[]>(task?.reminders ?? []);
+  const [autoRegen, setAutoRegen] = useState(task?.autoRegen ?? false);
+  const [noticeDays, setNoticeDays] = useState(task?.regenNoticeDaysBefore ?? 60);
+  const [leadDays, setLeadDays] = useState(task?.regenLeadDays ?? 7);
   const [error, setError] = useState("");
+
+  // 자동재생성은 주기형(매주/매월/매년)에서만, 만기일이 있어야 미리보기 가능
+  const regenEnabled = canAutoRegen(repeat);
+  const regenPreview =
+    regenEnabled && autoRegen && endDate
+      ? computeRegenDates(endDate, noticeDays, leadDays)
+      : null;
 
   // 카테고리 드롭다운 옵션(부모>자식 들여쓰기)
   const catOptions = useMemo(() => {
@@ -145,7 +161,9 @@ export default function TaskForm({
       endTime,
       repeat,
       repeatDays: repeat === "weekly_days" ? repeatDays : [],
-      autoRegen: task?.autoRegen ?? false, // 자동재생성은 Sprint 06
+      autoRegen: regenEnabled ? autoRegen : false, // 주기형 아니면 강제 off
+      regenNoticeDaysBefore: regenEnabled && autoRegen ? noticeDays : null,
+      regenLeadDays: regenEnabled && autoRegen ? leadDays : null,
       reminders,
       tags,
       share: task?.share ?? { scope: "private", sharedWith: [], permission: {} },
@@ -354,6 +372,138 @@ export default function TaskForm({
               </div>
             )}
           </div>
+
+          {/* 자동 재생성 (주기형: 매주/매월/매년에서만) */}
+          {regenEnabled && (
+            <div className="field">
+              <span className="field__label">완료 시 자동 재생성 (갱신)</span>
+              <div className="toggle">
+                <button
+                  type="button"
+                  className={"toggle__btn" + (!autoRegen ? " toggle__btn--on" : "")}
+                  onClick={() => setAutoRegen(false)}
+                >
+                  안 함
+                </button>
+                <button
+                  type="button"
+                  className={"toggle__btn" + (autoRegen ? " toggle__btn--on" : "")}
+                  onClick={() => setAutoRegen(true)}
+                >
+                  켜기
+                </button>
+              </div>
+
+              {autoRegen && (
+                <>
+                  <div className="field-row">
+                    <label className="field">
+                      <span className="field__label">안내 목표 (만기 며칠 전)</span>
+                      <div className="regen-input">
+                        <select
+                          className="field__input"
+                          value={
+                            NOTICE_PRESETS.some((p) => p.value === noticeDays)
+                              ? String(noticeDays)
+                              : "custom"
+                          }
+                          onChange={(e) =>
+                            setNoticeDays(
+                              e.target.value === "custom"
+                                ? 45
+                                : Number(e.target.value)
+                            )
+                          }
+                        >
+                          {NOTICE_PRESETS.map((p) => (
+                            <option key={p.value} value={p.value}>
+                              {p.label}
+                            </option>
+                          ))}
+                          <option value="custom">직접 입력(일)</option>
+                        </select>
+                        {!NOTICE_PRESETS.some((p) => p.value === noticeDays) && (
+                          <input
+                            type="number"
+                            min={1}
+                            className="field__input regen-mins"
+                            value={noticeDays}
+                            onChange={(e) =>
+                              setNoticeDays(Math.max(1, Number(e.target.value)))
+                            }
+                            title="만기 며칠 전"
+                          />
+                        )}
+                      </div>
+                    </label>
+                    <label className="field">
+                      <span className="field__label">준비 리드타임</span>
+                      <div className="regen-input">
+                        <select
+                          className="field__input"
+                          value={
+                            LEAD_PRESETS.some((p) => p.value === leadDays)
+                              ? String(leadDays)
+                              : "custom"
+                          }
+                          onChange={(e) =>
+                            setLeadDays(
+                              e.target.value === "custom" ? 10 : Number(e.target.value)
+                            )
+                          }
+                        >
+                          {LEAD_PRESETS.map((p) => (
+                            <option key={p.value} value={p.value}>
+                              {p.label}
+                            </option>
+                          ))}
+                          <option value="custom">직접 입력(일)</option>
+                        </select>
+                        {!LEAD_PRESETS.some((p) => p.value === leadDays) && (
+                          <input
+                            type="number"
+                            min={1}
+                            className="field__input regen-mins"
+                            value={leadDays}
+                            onChange={(e) =>
+                              setLeadDays(Math.max(1, Number(e.target.value)))
+                            }
+                            title="안내일보다 며칠 먼저"
+                          />
+                        )}
+                      </div>
+                    </label>
+                  </div>
+
+                  {regenPreview ? (
+                    <div className="regen-preview">
+                      <div className="regen-preview__row">
+                        <span className="regen-preview__k">생성일</span>
+                        <b>{regenPreview.createDate}</b>
+                      </div>
+                      <div className="regen-preview__row">
+                        <span className="regen-preview__k">안내일</span>
+                        <b>{regenPreview.noticeDate}</b>
+                      </div>
+                      <div className="regen-preview__row">
+                        <span className="regen-preview__k">만기일</span>
+                        <b>{regenPreview.dueDate}</b>
+                      </div>
+                      <span className="reminder-hint">
+                        완료하면 다음 주기 만기로 새 할 일이 생성됩니다. 실제
+                        리드타임 '미리 생성' 스케줄링은 서버 연결 후.
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="reminder-hint">
+                      만기(마감) 날짜를 입력하면 생성·안내·만기 미리보기가
+                      표시됩니다.
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* 알람 (최대 5) */}
           <div className="field">

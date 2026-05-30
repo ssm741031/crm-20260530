@@ -10,6 +10,7 @@
    ============================================================ */
 import { mockCategories, mockCustomers, mockTasks, mockUsers } from "../mock/data";
 import type { Category, Customer, Task, User } from "../types";
+import { addPeriod, canAutoRegen } from "../utils/regen";
 
 // 서버 지연을 흉내내는 작은 헬퍼 (로딩 상태 테스트용)
 function delay<T>(data: T, ms = 120): Promise<T> {
@@ -109,14 +110,38 @@ export const api = {
     return delay(undefined);
   },
 
-  /** 완료 토글 (작업완료는 사용자 확인 클릭으로만 — 계획서 §4.2) */
+  /** 완료 토글 (작업완료는 사용자 확인 클릭으로만 — 계획서 §4.2)
+   *  완료로 전환 + autoRegen + 주기형(매주/매월/매년)이면 다음 회차를 즉시 생성.
+   *  (실제 '리드타임 전 미리 생성' 스케줄링은 서버 몫 — 계획서 §5-B.3) */
   toggleDone: (id: string, doneAtIso: string | null): Promise<Task> => {
+    const before = tasks.find((t) => t.id === id);
+    const willBeDone = before ? !before.done : false;
+
     tasks = tasks.map((t) =>
       t.id === id
         ? { ...t, done: !t.done, doneAt: !t.done ? doneAtIso : null }
         : t
     );
     const updated = tasks.find((t) => t.id === id)!;
+
+    // 완료로 전환되는 순간에만 재생성 (해제 시엔 생성 안 함 → 무한 루프 방지)
+    if (
+      willBeDone &&
+      updated.autoRegen &&
+      canAutoRegen(updated.repeat) &&
+      updated.endDate
+    ) {
+      const nextDue = addPeriod(updated.endDate, updated.repeat);
+      const regenerated: Task = {
+        ...updated,
+        id: newTaskId(),
+        endDate: nextDue,
+        done: false,
+        doneAt: null,
+        streak: updated.streak + 1, // 연속 달성 누적
+      };
+      tasks = [...tasks, regenerated];
+    }
     return delay({ ...updated });
   },
 };

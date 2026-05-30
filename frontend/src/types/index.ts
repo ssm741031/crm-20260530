@@ -95,7 +95,9 @@ export interface Task {
   endTime: string | null;
   repeat: RepeatType;
   repeatDays: number[]; // 요일 지정 시 0(일)~6(토)
-  autoRegen: boolean; // 완료 시 자동 재생성 (계획서 §5-B.3)
+  autoRegen: boolean; // 완료 시 자동 재생성 (계획서 §5-B.3, 매주/매월/매년만)
+  regenNoticeDaysBefore: number | null; // 안내 목표: 만기 N일 전 (autoRegen 시)
+  regenLeadDays: number | null; // 준비 리드타임: 안내일보다 N일 먼저 생성
   reminders: Reminder[]; // 최대 5
   tags: string[];
   share: Share;
