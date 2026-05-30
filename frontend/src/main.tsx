@@ -11,7 +11,7 @@ import CustomersPage from "./pages/CustomersPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import CalendarPage from "./pages/CalendarPage";
 import HabitsPage from "./pages/HabitsPage";
-import Placeholder from "./pages/Placeholder";
+import PipelinePage from "./pages/PipelinePage";
 import "./index.css";
 
 const router = createBrowserRouter([
@@ -24,7 +24,7 @@ const router = createBrowserRouter([
       { path: "customers", element: <CustomersPage /> },
       { path: "calendar", element: <CalendarPage /> },
       { path: "habits", element: <HabitsPage /> },
-      { path: "pipeline", element: <Placeholder title="청약 파이프라인" /> },
+      { path: "pipeline", element: <PipelinePage /> },
       { path: "categories", element: <CategoriesPage /> },
     ],
   },

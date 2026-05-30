@@ -116,6 +116,13 @@ export type PipelineProduct =
   | "보상청구";
 export type PipelineStatus = "진행중" | "완료" | "지연";
 
+/** 지연 기록 (계획서 §2.4) — 연장 시 사유·기간 (활동량 분석용) */
+export interface Delay {
+  stageNo: number;
+  reason: string;
+  days: number;
+}
+
 export interface Pipeline {
   id: string;
   customerId: string;
@@ -124,6 +131,8 @@ export interface Pipeline {
   startedAt: string;
   status: PipelineStatus;
   stages: Stage[];
+  maturityDate: string | null; // 자동차갱신 만기일(하드 데드라인). 그 외 null
+  delays: Delay[]; // 연장(지연) 기록
 }
 
 /** 단계 (Stage) (계획서 §2.3) */

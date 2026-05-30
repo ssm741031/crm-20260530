@@ -8,9 +8,24 @@
      지금은 메모리 안의 배열을 직접 바꾼다(목). 새로고침하면 초기화됨.
      서버 연결 시 같은 함수가 서버에 저장하도록 바뀐다.
    ============================================================ */
-import { mockCategories, mockCustomers, mockTasks, mockUsers } from "../mock/data";
-import type { Category, Customer, Task, User } from "../types";
+import {
+  mockCategories,
+  mockCustomers,
+  mockPipelines,
+  mockTasks,
+  mockUsers,
+} from "../mock/data";
+import type {
+  Category,
+  Customer,
+  Pipeline,
+  PipelineProduct,
+  Task,
+  User,
+} from "../types";
 import { addPeriod, canAutoRegen } from "../utils/regen";
+import { addDays, todayIso } from "../utils/calendar";
+import { buildStages, effectiveDue, isOverdue, nextDueAt } from "../utils/pipeline";
 
 // 서버 지연을 흉내내는 작은 헬퍼 (로딩 상태 테스트용)
 function delay<T>(data: T, ms = 120): Promise<T> {
@@ -21,11 +36,28 @@ function delay<T>(data: T, ms = 120): Promise<T> {
 let categories: Category[] = mockCategories.map((c) => ({ ...c }));
 let tasks: Task[] = mockTasks.map((t) => ({ ...t }));
 
+// 파이프라인 깊은 복사(단계·지연 배열 포함)
+const clonePipeline = (p: Pipeline): Pipeline => ({
+  ...p,
+  stages: p.stages.map((s) => ({ ...s })),
+  delays: p.delays.map((d) => ({ ...d })),
+});
+let pipelines: Pipeline[] = mockPipelines.map(clonePipeline);
+
 // ID 생성용 카운터
 let categorySeq = 1;
 let taskSeq = 1;
+let pipelineSeq = 1;
 const newCategoryId = () => `c-new-${categorySeq++}`;
 const newTaskId = () => `t-new-${taskSeq++}`;
+const newPipelineId = () => `p-new-${pipelineSeq++}`;
+
+// 단계별 지연(overdue) 상태를 오늘 기준으로 재계산
+function recalcOverdue(p: Pipeline): void {
+  p.stages.forEach((s) => {
+    s.isOverdue = isOverdue(s);
+  });
+}
 
 export const CARRY_DEFAULT_ID = "c0"; // 삭제 불가 '기본' 카테고리
 
@@ -160,5 +192,74 @@ export const api = {
     });
     const updated = tasks.find((t) => t.id === id)!;
     return delay({ ...updated });
+  },
+
+  // ----- 청약 파이프라인 (계획서 §2.2~2.5, §3) -----
+  getPipelines: (): Promise<Pipeline[]> => {
+    pipelines.forEach(recalcOverdue);
+    return delay(pipelines.map(clonePipeline));
+  },
+
+  /** 새 청약 시작 — 상품 템플릿 적용(자동차갱신이면 만기일 역산) */
+  createPipeline: (input: {
+    customerId: string;
+    product: PipelineProduct;
+    maturityDate?: string | null;
+  }): Promise<Pipeline> => {
+    const id = newPipelineId();
+    const startedAt = todayIso();
+    const maturityDate = input.maturityDate ?? null;
+    const created: Pipeline = {
+      id,
+      customerId: input.customerId,
+      product: input.product,
+      currentStage: 1,
+      startedAt,
+      status: "진행중",
+      maturityDate,
+      delays: [],
+      stages: buildStages(id, input.product, startedAt, maturityDate),
+    };
+    recalcOverdue(created);
+    pipelines = [...pipelines, created];
+    return delay(clonePipeline(created));
+  },
+
+  /** 단계 완료 — 다음 단계 마감 자동 산출, 마지막이면 상태 완료 (계획서 §3.1) */
+  completeStage: (
+    pipelineId: string,
+    stageNo: number,
+    doneAtIso: string
+  ): Promise<Pipeline> => {
+    const p = pipelines.find((x) => x.id === pipelineId)!;
+    const stage = p.stages.find((s) => s.stageNo === stageNo)!;
+    stage.done = true;
+    stage.doneAt = doneAtIso;
+    stage.isOverdue = false;
+    const next = p.stages.find((s) => s.stageNo === stageNo + 1);
+    if (next) {
+      p.currentStage = next.stageNo;
+      next.dueAt = nextDueAt(p.product, next.stageNo, doneAtIso, next.dueAt);
+    } else {
+      p.status = "완료";
+    }
+    recalcOverdue(p);
+    return delay(clonePipeline(p));
+  },
+
+  /** 연장(지연 처리) — 사유·기간 기록 + 해당 단계 마감 재설정 (계획서 §3.2) */
+  extendStage: (
+    pipelineId: string,
+    stageNo: number,
+    reason: string,
+    days: number
+  ): Promise<Pipeline> => {
+    const p = pipelines.find((x) => x.id === pipelineId)!;
+    const stage = p.stages.find((s) => s.stageNo === stageNo)!;
+    const base = effectiveDue(stage) ?? todayIso();
+    stage.extendedDueAt = addDays(base, days);
+    p.delays = [...p.delays, { stageNo, reason: reason.trim(), days }];
+    recalcOverdue(p);
+    return delay(clonePipeline(p));
   },
 };

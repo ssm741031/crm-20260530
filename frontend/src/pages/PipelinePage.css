@@ -1,0 +1,186 @@
+.pl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.btn--sm {
+  padding: 4px var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* 새 청약 폼 */
+.pl-new {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--color-surface);
+}
+.pl-new__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* 목록 행 */
+.pl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+}
+.pl-row__title {
+  font-weight: 600;
+}
+.pl-row__sub {
+  font-size: var(--text-sm);
+  margin-top: 2px;
+}
+
+/* 진행률 바 */
+.pl-bar {
+  height: 6px;
+  background: var(--color-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 6px 0;
+  min-width: 160px;
+}
+.pl-bar--lg {
+  height: 10px;
+}
+.pl-bar__fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+/* 상태 배지 */
+.pl-status {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.pl-status.is-done {
+  background: color-mix(in srgb, var(--color-success, green) 15%, transparent);
+  color: var(--color-success, green);
+}
+.pl-status.is-late {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  color: var(--color-danger);
+}
+
+/* 상세 */
+.pl-detail__title {
+  font-size: var(--text-lg);
+}
+.pl-maturity {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* 단계 타임라인 */
+.pl-stages {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.pl-stage {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+.pl-stage:first-child {
+  border-top: none;
+}
+.pl-stage__no {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.pl-stage.is-done .pl-stage__no {
+  background: var(--color-primary);
+  color: #fff;
+}
+.pl-stage.is-current .pl-stage__no {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+}
+.pl-stage.is-late .pl-stage__no {
+  outline-color: var(--color-danger);
+}
+.pl-stage__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pl-stage__name {
+  font-weight: 500;
+}
+.pl-stage.is-done .pl-stage__name {
+  color: var(--color-text-muted);
+}
+.pl-stage__meta {
+  font-size: var(--text-sm);
+}
+.pl-late-badge {
+  margin-left: var(--space-2);
+  color: var(--color-danger);
+  font-weight: 700;
+}
+.pl-stage__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: 4px;
+}
+.pl-extend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+.pl-extend__days {
+  max-width: 70px;
+}
+
+/* 지연 기록 */
+.pl-delays {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pl-delay {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.pl__note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}

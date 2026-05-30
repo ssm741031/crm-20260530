@@ -3,7 +3,7 @@
    ⚠️ 실제 고객 개인정보 금지. 전부 가공의 샘플.
    서버 연결 시 이 파일은 더 이상 쓰이지 않는다.
    ============================================================ */
-import type { Category, Customer, Task, User } from "../types";
+import type { Category, Customer, Pipeline, Task, User } from "../types";
 
 export const mockUsers: User[] = [
   { id: "u1", name: "대표", loginId: "boss", role: "대표" },
@@ -119,5 +119,45 @@ export const mockTasks: Task[] = [
     done: false,
     doneAt: null,
     streak: 0,
+  },
+];
+
+/** 샘플 청약 파이프라인 (계획서 §2.2~2.5) — 가공 데이터 */
+export const mockPipelines: Pipeline[] = [
+  {
+    id: "p1",
+    customerId: "cust1", // 홍길동
+    product: "장기보험",
+    currentStage: 3,
+    startedAt: "2026-05-20",
+    status: "진행중",
+    maturityDate: null,
+    delays: [],
+    stages: [
+      { id: "p1-s1", pipelineId: "p1", stageNo: 1, name: "고객 DB 수집", done: true, doneAt: "2026-05-20", dueAt: "2026-05-20", isOverdue: false, extendedDueAt: null },
+      { id: "p1-s2", pipelineId: "p1", stageNo: 2, name: "고객 연락·니즈 파악", done: true, doneAt: "2026-05-21", dueAt: "2026-05-21", isOverdue: false, extendedDueAt: null },
+      { id: "p1-s3", pipelineId: "p1", stageNo: 3, name: "개인정보 수령 → 보장분석", done: false, doneAt: null, dueAt: "2026-05-23", isOverdue: true, extendedDueAt: null },
+      { id: "p1-s4", pipelineId: "p1", stageNo: 4, name: "기본설계 + 고객 미팅", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
+      { id: "p1-s5", pipelineId: "p1", stageNo: 5, name: "수정설계·제안", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
+      { id: "p1-s6", pipelineId: "p1", stageNo: 6, name: "청약·고지(심사)", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
+      { id: "p1-s7", pipelineId: "p1", stageNo: 7, name: "증권 전달", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
+      { id: "p1-s8", pipelineId: "p1", stageNo: 8, name: "감사 인사·사후관리", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
+    ],
+  },
+  {
+    id: "p2",
+    customerId: "cust2", // 김샘플
+    product: "자동차갱신",
+    currentStage: 1,
+    startedAt: "2026-05-31",
+    status: "진행중",
+    maturityDate: "2026-07-30",
+    delays: [],
+    stages: [
+      { id: "p2-s1", pipelineId: "p2", stageNo: 1, name: "할인 활동 안내", done: false, doneAt: null, dueAt: "2026-05-31", isOverdue: false, extendedDueAt: null },
+      { id: "p2-s2", pipelineId: "p2", stageNo: 2, name: "비교설계 및 안내", done: false, doneAt: null, dueAt: "2026-06-30", isOverdue: false, extendedDueAt: null },
+      { id: "p2-s3", pipelineId: "p2", stageNo: 3, name: "재계약 (고객 요청일)", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
+      { id: "p2-s4", pipelineId: "p2", stageNo: 4, name: "증권 안내", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
+    ],
   },
 ];
