@@ -132,7 +132,8 @@ export interface Pipeline {
   status: PipelineStatus;
   stages: Stage[];
   maturityDate: string | null; // 자동차갱신 만기일(하드 데드라인). 그 외 null
-  vehicleNo: string | null; // 자동차(신규·갱신) 차량번호. 동일 고객 다차량 구분. 그 외 null
+  vehicleNo: string | null; // 자동차 차량번호. 동일 고객 다차량 구분. 그 외 null
+  vehicleVin: string | null; // 차대번호(VIN) — 신규 차량 등 번호 미발급 시 사용. 그 외 null
   delays: Delay[]; // 연장(지연) 기록
 }
 

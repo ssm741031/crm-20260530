@@ -23,9 +23,19 @@ export const PRODUCT_LIST: PipelineProduct[] = [
   "보상청구",
 ];
 
-/** 자동차 상품(신규·갱신) — 차량번호로 식별(동일 고객 다차량) */
+/** 자동차 상품(신규·갱신) — 차량번호/차대번호로 식별(동일 고객 다차량) */
 export function isAutoProduct(p: PipelineProduct): boolean {
   return p === "자동차신규" || p === "자동차갱신";
+}
+
+/** 차량 식별 표시 라벨 — 차량번호 우선, 없으면 차대번호(신규 차량). 둘 다 없으면 null */
+export function vehicleLabel(p: {
+  vehicleNo: string | null;
+  vehicleVin: string | null;
+}): string | null {
+  if (p.vehicleNo) return p.vehicleNo;
+  if (p.vehicleVin) return `차대 ${p.vehicleVin}`;
+  return null;
 }
 
 /** 5종 단계 템플릿 (계획서 §2.5 초기값) */

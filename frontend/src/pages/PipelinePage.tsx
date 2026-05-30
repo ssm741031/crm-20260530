@@ -7,6 +7,7 @@ import {
   isAutoProduct,
   isOverdue,
   ruleLabel,
+  vehicleLabel,
 } from "../utils/pipeline";
 import { PIPELINE_TEMPLATES } from "../utils/pipeline";
 import { todayIso } from "../utils/calendar";
@@ -24,6 +25,7 @@ export default function PipelinePage() {
   const [newProduct, setNewProduct] = useState<PipelineProduct>("장기보험");
   const [newMaturity, setNewMaturity] = useState("");
   const [newVehicle, setNewVehicle] = useState("");
+  const [newVehicleKind, setNewVehicleKind] = useState<"no" | "vin">("no");
 
   // 연장 폼 (현재 단계)
   const [extendNo, setExtendNo] = useState<number | null>(null);
@@ -73,7 +75,14 @@ export default function PipelinePage() {
         customerId: newCustomer,
         product: newProduct,
         maturityDate: newProduct === "자동차갱신" ? newMaturity || null : null,
-        vehicleNo: isAutoProduct(newProduct) ? newVehicle.trim() || null : null,
+        vehicleNo:
+          isAutoProduct(newProduct) && newVehicleKind === "no"
+            ? newVehicle.trim() || null
+            : null,
+        vehicleVin:
+          isAutoProduct(newProduct) && newVehicleKind === "vin"
+            ? newVehicle.trim() || null
+            : null,
       })
       .then(refresh)
       .then(() => {
@@ -81,6 +90,7 @@ export default function PipelinePage() {
         setNewCustomer("");
         setNewMaturity("");
         setNewVehicle("");
+        setNewVehicleKind("no");
       });
   }
 
@@ -132,15 +142,37 @@ export default function PipelinePage() {
               </select>
             </label>
             {isAutoProduct(newProduct) && (
-              <label className="field">
-                <span className="field__label">차량번호</span>
+              <div className="field">
+                <span className="field__label">차량 식별</span>
+                <div className="toggle">
+                  <button
+                    type="button"
+                    className={
+                      "toggle__btn" + (newVehicleKind === "no" ? " toggle__btn--on" : "")
+                    }
+                    onClick={() => setNewVehicleKind("no")}
+                  >
+                    차량번호
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      "toggle__btn" + (newVehicleKind === "vin" ? " toggle__btn--on" : "")
+                    }
+                    onClick={() => setNewVehicleKind("vin")}
+                  >
+                    차대번호 (신규·미발급)
+                  </button>
+                </div>
                 <input
                   className="field__input"
-                  placeholder="예: 12가 3456"
+                  placeholder={
+                    newVehicleKind === "no" ? "예: 12가 3456" : "예: KMHxxxxxxxxxxxxx (차대번호)"
+                  }
                   value={newVehicle}
                   onChange={(e) => setNewVehicle(e.target.value)}
                 />
-              </label>
+              </div>
             )}
             {newProduct === "자동차갱신" && (
               <label className="field">
@@ -187,7 +219,7 @@ export default function PipelinePage() {
                 <div>
                   <div className="pl-row__title">
                     {custName(p.customerId)} · {p.product}
-                    {p.vehicleNo ? ` · 🚗 ${p.vehicleNo}` : ""}
+                    {vehicleLabel(p) ? ` · 🚗 ${vehicleLabel(p)}` : ""}
                   </div>
                   <div className="pl-bar">
                     <div
@@ -245,7 +277,7 @@ export default function PipelinePage() {
 
         <h2 className="pl-detail__title">
           {custName(p.customerId)} · {p.product}
-          {p.vehicleNo ? ` · 🚗 ${p.vehicleNo}` : ""}
+          {vehicleLabel(p) ? ` · 🚗 ${vehicleLabel(p)}` : ""}
         </h2>
         <div className="pl-bar pl-bar--lg">
           <div

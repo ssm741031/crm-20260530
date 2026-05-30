@@ -212,6 +212,7 @@ export const api = {
     product: PipelineProduct;
     maturityDate?: string | null;
     vehicleNo?: string | null;
+    vehicleVin?: string | null;
   }): Promise<Pipeline> => {
     const id = newPipelineId();
     const startedAt = todayIso();
@@ -225,6 +226,7 @@ export const api = {
       status: "진행중",
       maturityDate,
       vehicleNo: isAutoProduct(input.product) ? input.vehicleNo ?? null : null,
+      vehicleVin: isAutoProduct(input.product) ? input.vehicleVin ?? null : null,
       delays: [],
       stages: buildStages(id, input.product, startedAt, maturityDate),
     };

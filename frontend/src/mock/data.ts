@@ -133,6 +133,7 @@ export const mockPipelines: Pipeline[] = [
     status: "진행중",
     maturityDate: null,
     vehicleNo: null,
+    vehicleVin: null,
     delays: [],
     stages: [
       { id: "p1-s1", pipelineId: "p1", stageNo: 1, name: "고객 DB 수집", done: true, doneAt: "2026-05-20", dueAt: "2026-05-20", isOverdue: false, extendedDueAt: null },
@@ -154,6 +155,7 @@ export const mockPipelines: Pipeline[] = [
     status: "진행중",
     maturityDate: "2026-07-30",
     vehicleNo: "12가 3456",
+    vehicleVin: null,
     delays: [],
     stages: [
       { id: "p2-s1", pipelineId: "p2", stageNo: 1, name: "할인 활동 안내", done: false, doneAt: null, dueAt: "2026-05-31", isOverdue: false, extendedDueAt: null },
