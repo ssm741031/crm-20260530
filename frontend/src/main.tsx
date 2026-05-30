@@ -10,6 +10,7 @@ import TasksPage from "./pages/TasksPage";
 import CustomersPage from "./pages/CustomersPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import CalendarPage from "./pages/CalendarPage";
+import HabitsPage from "./pages/HabitsPage";
 import Placeholder from "./pages/Placeholder";
 import "./index.css";
 
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
       { path: "tasks", element: <TasksPage /> },
       { path: "customers", element: <CustomersPage /> },
       { path: "calendar", element: <CalendarPage /> },
+      { path: "habits", element: <HabitsPage /> },
       { path: "pipeline", element: <Placeholder title="청약 파이프라인" /> },
       { path: "categories", element: <CategoriesPage /> },
     ],

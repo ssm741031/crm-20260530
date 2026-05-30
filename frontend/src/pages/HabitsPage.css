@@ -1,0 +1,126 @@
+.habits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.habit-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.habit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+.habit-row:first-child {
+  border-top: none;
+}
+.habit-row--head {
+  background: var(--color-bg);
+}
+
+.habit-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.habit-info--head {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+.habit-title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.habit-meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* 주간 그리드 */
+.habit-week {
+  display: grid;
+  grid-template-columns: repeat(7, 32px);
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+.habit-wd {
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.habit-wd__n {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.habit-cell {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  border: 1px solid transparent;
+}
+.habit-cell--today {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+.habit-cell--today.is-done {
+  background: var(--color-primary);
+  color: #fff;
+}
+.habit-cell--future {
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+}
+.habit-cell--past {
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  opacity: 0.6;
+}
+.habit-cell--none {
+  color: var(--color-border);
+}
+
+.habits__note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+@media (max-width: 768px) {
+  .habit-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .habit-week {
+    grid-template-columns: repeat(7, 1fr);
+    width: 100%;
+  }
+  .habit-cell {
+    width: 100%;
+  }
+}

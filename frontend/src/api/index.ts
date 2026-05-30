@@ -144,4 +144,21 @@ export const api = {
     }
     return delay({ ...updated });
   },
+
+  /** 습관 오늘 체크 토글 (계획서 §5-B.2) — 완료 시 streak+1, 해제 시 −1(최소 0).
+   *  공용 toggleDone과 분리해 할 일·캘린더 동작에 영향 주지 않는다. */
+  toggleHabitDone: (id: string, doneAtIso: string | null): Promise<Task> => {
+    tasks = tasks.map((t) => {
+      if (t.id !== id) return t;
+      const nowDone = !t.done;
+      return {
+        ...t,
+        done: nowDone,
+        doneAt: nowDone ? doneAtIso : null,
+        streak: nowDone ? t.streak + 1 : Math.max(0, t.streak - 1),
+      };
+    });
+    const updated = tasks.find((t) => t.id === id)!;
+    return delay({ ...updated });
+  },
 };
