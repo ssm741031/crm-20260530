@@ -4,7 +4,7 @@
    서버 완성 시: 각 함수 안을 fetch("/api/...") 호출로 교체하면 됨.
    화면 코드는 한 줄도 안 바꿔도 된다.  ← 이게 분리의 핵심
 
-   ※ 카테고리는 추가/수정/삭제(CRUD)를 지원한다.
+   ※ 카테고리·할 일은 추가/수정/삭제(CRUD)를 지원한다.
      지금은 메모리 안의 배열을 직접 바꾼다(목). 새로고침하면 초기화됨.
      서버 연결 시 같은 함수가 서버에 저장하도록 바뀐다.
    ============================================================ */
@@ -16,27 +16,29 @@ function delay<T>(data: T, ms = 120): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
 
-// 카테고리만 변경 가능하므로 별도의 변경 가능한 복사본을 둔다.
+// 변경 가능한 복사본 (목 상태)
 let categories: Category[] = mockCategories.map((c) => ({ ...c }));
+let tasks: Task[] = mockTasks.map((t) => ({ ...t }));
 
-// 새 카테고리 ID 생성용 카운터
+// ID 생성용 카운터
 let categorySeq = 1;
-function newCategoryId(): string {
-  return `c-new-${categorySeq++}`;
-}
+let taskSeq = 1;
+const newCategoryId = () => `c-new-${categorySeq++}`;
+const newTaskId = () => `t-new-${taskSeq++}`;
 
 export const CARRY_DEFAULT_ID = "c0"; // 삭제 불가 '기본' 카테고리
+
+/** 할 일 편집폼이 만들어 보내는 입력값 (id·완료상태·streak는 시스템이 채움) */
+export type TaskInput = Omit<Task, "id" | "done" | "doneAt" | "streak">;
 
 export const api = {
   getUsers: (): Promise<User[]> => delay(mockUsers),
   getCustomers: (): Promise<Customer[]> => delay(mockCustomers),
-  getTasks: (): Promise<Task[]> => delay(mockTasks),
 
   // ----- 카테고리 -----
   getCategories: (): Promise<Category[]> =>
     delay(categories.map((c) => ({ ...c }))),
 
-  /** 카테고리 추가. parentId=null이면 활동(부모), 값이 있으면 세부(자식) */
   createCategory: (input: {
     name: string;
     parentId: string | null;
@@ -52,7 +54,6 @@ export const api = {
     return delay({ ...created });
   },
 
-  /** 이름·색상 수정 */
   updateCategory: (
     id: string,
     patch: { name?: string; color?: string }
@@ -70,7 +71,6 @@ export const api = {
     return delay({ ...updated });
   },
 
-  /** 삭제. 부모를 지우면 그 자식들도 함께 삭제된다. '기본'은 삭제 불가 */
   deleteCategory: (id: string): Promise<{ deletedIds: string[] }> => {
     if (id === CARRY_DEFAULT_ID) {
       return Promise.reject(new Error("'기본' 카테고리는 삭제할 수 없습니다."));
@@ -81,5 +81,42 @@ export const api = {
     const deletedIds = [id, ...childIds];
     categories = categories.filter((c) => !deletedIds.includes(c.id));
     return delay({ deletedIds });
+  },
+
+  // ----- 할 일 -----
+  getTasks: (): Promise<Task[]> => delay(tasks.map((t) => ({ ...t }))),
+
+  createTask: (input: TaskInput): Promise<Task> => {
+    const created: Task = {
+      ...input,
+      id: newTaskId(),
+      done: false,
+      doneAt: null,
+      streak: 0,
+    };
+    tasks = [...tasks, created];
+    return delay({ ...created });
+  },
+
+  updateTask: (id: string, patch: Partial<Task>): Promise<Task> => {
+    tasks = tasks.map((t) => (t.id === id ? { ...t, ...patch } : t));
+    const updated = tasks.find((t) => t.id === id)!;
+    return delay({ ...updated });
+  },
+
+  deleteTask: (id: string): Promise<void> => {
+    tasks = tasks.filter((t) => t.id !== id);
+    return delay(undefined);
+  },
+
+  /** 완료 토글 (작업완료는 사용자 확인 클릭으로만 — 계획서 §4.2) */
+  toggleDone: (id: string, doneAtIso: string | null): Promise<Task> => {
+    tasks = tasks.map((t) =>
+      t.id === id
+        ? { ...t, done: !t.done, doneAt: !t.done ? doneAtIso : null }
+        : t
+    );
+    const updated = tasks.find((t) => t.id === id)!;
+    return delay({ ...updated });
   },
 };

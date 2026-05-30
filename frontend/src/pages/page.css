@@ -53,6 +53,8 @@
   color: #fff;
   font-size: 13px;
   flex-shrink: 0;
+  background: var(--color-surface);
+  cursor: pointer;
 }
 .check--on {
   background: var(--color-success);
@@ -70,4 +72,33 @@
   background: var(--color-primary-soft);
   padding: 2px var(--space-2);
   border-radius: var(--radius-sm);
+}
+
+/* 목록 상단 헤더 (건수 + 새 할 일 버튼) */
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+.page-head .muted {
+  margin-bottom: 0;
+}
+
+/* 클릭 가능한 카드 */
+.card--click {
+  cursor: pointer;
+}
+.card--click:hover {
+  border-color: var(--color-primary);
+}
+
+/* 카테고리 색 칩 */
+.cat-chip {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  background: var(--chip, var(--cat-default));
 }
