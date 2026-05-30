@@ -9,6 +9,7 @@ import AppShell from "./app/AppShell";
 import TasksPage from "./pages/TasksPage";
 import CustomersPage from "./pages/CustomersPage";
 import CategoriesPage from "./pages/CategoriesPage";
+import CalendarPage from "./pages/CalendarPage";
 import Placeholder from "./pages/Placeholder";
 import "./index.css";
 
@@ -20,7 +21,7 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/tasks" replace /> },
       { path: "tasks", element: <TasksPage /> },
       { path: "customers", element: <CustomersPage /> },
-      { path: "calendar", element: <Placeholder title="캘린더" /> },
+      { path: "calendar", element: <CalendarPage /> },
       { path: "pipeline", element: <Placeholder title="청약 파이프라인" /> },
       { path: "categories", element: <CategoriesPage /> },
     ],

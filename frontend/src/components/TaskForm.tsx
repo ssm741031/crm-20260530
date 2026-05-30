@@ -31,6 +31,7 @@ interface Props {
   onSave: (input: TaskInput, id: string | null) => void;
   onClose: () => void;
   onDelete: (id: string) => void;
+  initialDate?: string; // 새로 만들기 시 만기 날짜 기본값(캘린더 날짜 더블클릭)
 }
 
 const DEFAULT_CATEGORY = "c0";
@@ -42,6 +43,7 @@ export default function TaskForm({
   onSave,
   onClose,
   onDelete,
+  initialDate,
 }: Props) {
   const isEdit = task !== null;
 
@@ -54,7 +56,7 @@ export default function TaskForm({
   const [timeType, setTimeType] = useState<TimeType>(task?.timeType ?? "deadline");
   const [startDate, setStartDate] = useState(task?.startDate ?? "");
   const [startTime, setStartTime] = useState(task?.startTime ?? "09:00");
-  const [endDate, setEndDate] = useState(task?.endDate ?? "");
+  const [endDate, setEndDate] = useState(task?.endDate ?? initialDate ?? "");
   const [endTime, setEndTime] = useState(task?.endTime ?? "10:00");
   const [tags, setTags] = useState<string[]>(task?.tags ?? []);
   const [tagInput, setTagInput] = useState("");
