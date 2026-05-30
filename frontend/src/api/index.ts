@@ -25,7 +25,13 @@ import type {
 } from "../types";
 import { addPeriod, canAutoRegen } from "../utils/regen";
 import { addDays, todayIso } from "../utils/calendar";
-import { buildStages, effectiveDue, isOverdue, nextDueAt } from "../utils/pipeline";
+import {
+  buildStages,
+  effectiveDue,
+  isAutoProduct,
+  isOverdue,
+  nextDueAt,
+} from "../utils/pipeline";
 
 // 서버 지연을 흉내내는 작은 헬퍼 (로딩 상태 테스트용)
 function delay<T>(data: T, ms = 120): Promise<T> {
@@ -205,6 +211,7 @@ export const api = {
     customerId: string;
     product: PipelineProduct;
     maturityDate?: string | null;
+    vehicleNo?: string | null;
   }): Promise<Pipeline> => {
     const id = newPipelineId();
     const startedAt = todayIso();
@@ -217,6 +224,7 @@ export const api = {
       startedAt,
       status: "진행중",
       maturityDate,
+      vehicleNo: isAutoProduct(input.product) ? input.vehicleNo ?? null : null,
       delays: [],
       stages: buildStages(id, input.product, startedAt, maturityDate),
     };

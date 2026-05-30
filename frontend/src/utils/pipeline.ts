@@ -23,6 +23,11 @@ export const PRODUCT_LIST: PipelineProduct[] = [
   "보상청구",
 ];
 
+/** 자동차 상품(신규·갱신) — 차량번호로 식별(동일 고객 다차량) */
+export function isAutoProduct(p: PipelineProduct): boolean {
+  return p === "자동차신규" || p === "자동차갱신";
+}
+
 /** 5종 단계 템플릿 (계획서 §2.5 초기값) */
 export const PIPELINE_TEMPLATES: Record<PipelineProduct, StageTemplate[]> = {
   장기보험: [

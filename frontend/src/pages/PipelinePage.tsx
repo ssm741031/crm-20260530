@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import type { Customer, Pipeline, PipelineProduct, Stage } from "../types";
-import { PRODUCT_LIST, effectiveDue, isOverdue, ruleLabel } from "../utils/pipeline";
+import {
+  PRODUCT_LIST,
+  effectiveDue,
+  isAutoProduct,
+  isOverdue,
+  ruleLabel,
+} from "../utils/pipeline";
 import { PIPELINE_TEMPLATES } from "../utils/pipeline";
 import { todayIso } from "../utils/calendar";
 import "./PipelinePage.css";
@@ -17,6 +23,7 @@ export default function PipelinePage() {
   const [newCustomer, setNewCustomer] = useState("");
   const [newProduct, setNewProduct] = useState<PipelineProduct>("장기보험");
   const [newMaturity, setNewMaturity] = useState("");
+  const [newVehicle, setNewVehicle] = useState("");
 
   // 연장 폼 (현재 단계)
   const [extendNo, setExtendNo] = useState<number | null>(null);
@@ -66,12 +73,14 @@ export default function PipelinePage() {
         customerId: newCustomer,
         product: newProduct,
         maturityDate: newProduct === "자동차갱신" ? newMaturity || null : null,
+        vehicleNo: isAutoProduct(newProduct) ? newVehicle.trim() || null : null,
       })
       .then(refresh)
       .then(() => {
         setShowNew(false);
         setNewCustomer("");
         setNewMaturity("");
+        setNewVehicle("");
       });
   }
 
@@ -122,6 +131,17 @@ export default function PipelinePage() {
                 ))}
               </select>
             </label>
+            {isAutoProduct(newProduct) && (
+              <label className="field">
+                <span className="field__label">차량번호</span>
+                <input
+                  className="field__input"
+                  placeholder="예: 12가 3456"
+                  value={newVehicle}
+                  onChange={(e) => setNewVehicle(e.target.value)}
+                />
+              </label>
+            )}
             {newProduct === "자동차갱신" && (
               <label className="field">
                 <span className="field__label">만기일 (역산 기준)</span>
@@ -141,7 +161,11 @@ export default function PipelinePage() {
             <button
               className="btn btn--primary"
               onClick={startNew}
-              disabled={!newCustomer || (newProduct === "자동차갱신" && !newMaturity)}
+              disabled={
+                !newCustomer ||
+                (newProduct === "자동차갱신" && !newMaturity) ||
+                (isAutoProduct(newProduct) && !newVehicle.trim())
+              }
             >
               청약 시작
             </button>
@@ -163,6 +187,7 @@ export default function PipelinePage() {
                 <div>
                   <div className="pl-row__title">
                     {custName(p.customerId)} · {p.product}
+                    {p.vehicleNo ? ` · 🚗 ${p.vehicleNo}` : ""}
                   </div>
                   <div className="pl-bar">
                     <div
@@ -220,6 +245,7 @@ export default function PipelinePage() {
 
         <h2 className="pl-detail__title">
           {custName(p.customerId)} · {p.product}
+          {p.vehicleNo ? ` · 🚗 ${p.vehicleNo}` : ""}
         </h2>
         <div className="pl-bar pl-bar--lg">
           <div
