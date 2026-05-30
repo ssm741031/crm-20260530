@@ -11,6 +11,7 @@ import {
   minToTime,
   MONTH_LABELS,
   monthMatrix,
+  packIntervals,
   parseDate,
   snap15,
   tasksOnDate,
@@ -397,6 +398,24 @@ export default function CalendarPage() {
     });
     const inGrid = dayTasks.filter((t) => !other.includes(t));
 
+    // 막대 기하 + 겹침 레인 배치
+    const bars = inGrid.map((t) => {
+      const isRange = t.timeType === "range" && !!t.startTime && !!t.endTime;
+      const startMin = isRange
+        ? timeToMin(t.startTime!)
+        : timeToMin(t.endTime ?? "00:00");
+      const endMin = isRange ? timeToMin(t.endTime!) : startMin;
+      return { t, isRange, startMin, endMin };
+    });
+    const lanes = packIntervals(
+      bars.map((b) => ({
+        id: b.t.id,
+        start: b.startMin,
+        // 마감형은 겹침 판정용으로 30분 폭, 짧은 구간은 최소 폭 부여
+        end: b.isRange ? Math.max(b.endMin, b.startMin + 15) : b.startMin + 30,
+      }))
+    );
+
     return (
       <div className="cal-day">
         {other.length > 0 && (
@@ -426,28 +445,29 @@ export default function CalendarPage() {
           ))}
           {/* 막대 오버레이 (시간 비례 위치) */}
           <div className={"cal-day__bars" + (drag.dragging ? " is-dragging" : "")}>
-            {inGrid.map((t) => {
-              const isRange =
-                t.timeType === "range" && !!t.startTime && !!t.endTime;
-              const startMin = isRange
-                ? timeToMin(t.startTime!)
-                : timeToMin(t.endTime ?? "00:00");
-              const endMin = isRange ? timeToMin(t.endTime!) : startMin;
-              const top = minToY(startMin);
-              const height = isRange ? Math.max(20, minToY(endMin) - top) : 22;
+            {bars.map((b) => {
+              const t = b.t;
+              const top = minToY(b.startMin);
+              const height = b.isRange
+                ? Math.max(20, minToY(b.endMin) - top)
+                : 22;
+              const lane = lanes[t.id] ?? { col: 0, cols: 1 };
+              const widthPct = 100 / lane.cols;
               return (
                 <button
                   key={t.id}
                   className={
                     "cal-bar" +
                     (t.done ? " is-done" : "") +
-                    (isRange ? " is-range" : " is-deadline")
+                    (b.isRange ? " is-range" : " is-deadline")
                   }
                   style={
                     {
                       "--chip": catColor(t.categoryId),
                       top,
                       height,
+                      left: `${lane.col * widthPct}%`,
+                      width: `calc(${widthPct}% - 2px)`,
                     } as React.CSSProperties
                   }
                   onPointerDown={(e) => drag.start(e, { kind: "time", task: t })}
@@ -456,7 +476,7 @@ export default function CalendarPage() {
                     setEditing(t);
                   }}
                 >
-                  {isRange
+                  {b.isRange
                     ? `${t.startTime}~${t.endTime} `
                     : `${t.endTime ?? ""} `}
                   {t.title}

@@ -116,6 +116,43 @@ export function clampMin(min: number, loHour: number, hiHour: number): number {
   return Math.max(loHour * 60, Math.min(hiHour * 60, min));
 }
 
+/** 겹치는 시간 막대를 좌우 열(레인)로 배치 — 캘린더 표준 (일간 뷰).
+ *  서로 겹치는 묶음(cluster) 안에서 동시 개수만큼 폭을 나눠 col/cols를 돌려준다.
+ *  입력 end는 배치용(마감형은 호출측에서 약간의 폭을 주어 겹침을 판정). */
+export function packIntervals(
+  items: { id: string; start: number; end: number }[]
+): Record<string, { col: number; cols: number }> {
+  const sorted = [...items].sort((a, b) => a.start - b.start || a.end - b.end);
+  const result: Record<string, { col: number; cols: number }> = {};
+  let cols: { id: string; end: number }[][] = [];
+  let clusterMaxEnd = -Infinity;
+
+  const flush = () => {
+    const n = cols.length;
+    cols.forEach((col, ci) =>
+      col.forEach((m) => (result[m.id] = { col: ci, cols: n }))
+    );
+    cols = [];
+    clusterMaxEnd = -Infinity;
+  };
+
+  for (const it of sorted) {
+    if (cols.length && it.start >= clusterMaxEnd) flush(); // 묶음 종료
+    let placed = false;
+    for (const col of cols) {
+      if (col[col.length - 1].end <= it.start) {
+        col.push({ id: it.id, end: it.end });
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) cols.push([{ id: it.id, end: it.end }]);
+    clusterMaxEnd = Math.max(clusterMaxEnd, it.end);
+  }
+  if (cols.length) flush();
+  return result;
+}
+
 /** 보기 제어 필터 (§5.5) */
 export interface CalFilters {
   showDone: boolean; // 완료 표시
