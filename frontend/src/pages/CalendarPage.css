@@ -229,51 +229,87 @@
   flex: 1;
 }
 
-/* 일간 */
+/* 일간 — 시간 비례 타임바 */
 .cal-day {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
-.cal-day__row {
+/* 운영시간 밖 / 시간 없음 */
+.cal-day__other {
   display: flex;
-  border-top: 1px solid var(--color-border);
-  min-height: 40px;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
 }
-.cal-day__row:first-child {
+.cal-day__otherlist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+/* 시간 격자 + 막대 오버레이 컨테이너 */
+.cal-day__grid {
+  position: relative;
+}
+.cal-day__hrow {
+  position: relative;
+  border-top: 1px solid var(--color-border);
+  box-sizing: border-box;
+}
+.cal-day__hrow:first-child {
   border-top: none;
 }
 .cal-day__h {
-  width: 64px;
-  flex: 0 0 auto;
-  padding: var(--space-2);
+  display: inline-block;
+  width: 56px;
+  padding: 2px var(--space-2);
   font-size: 12px;
   color: var(--color-text-muted);
-  background: var(--color-bg);
-  text-align: right;
 }
-.cal-day__slot {
-  flex: 1;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.cal-day__hrow.is-dragover {
+  background: var(--color-primary-soft);
+}
+/* 막대 오버레이: 시간 라벨(56px) 오른쪽 영역에 절대배치 */
+.cal-day__bars {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 64px;
+  right: 8px;
+  pointer-events: none; /* 빈 영역 클릭/드래그는 아래 행으로 통과 */
 }
 .cal-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
   border: none;
   border-left: 3px solid var(--chip);
-  background: color-mix(in srgb, var(--chip) 14%, transparent);
+  background: color-mix(in srgb, var(--chip) 16%, transparent);
   color: var(--color-text);
   border-radius: var(--radius-sm);
-  padding: 4px var(--space-2);
+  padding: 3px var(--space-2);
   font-size: 12px;
   text-align: left;
+  overflow: hidden;
   touch-action: none;
   cursor: grab;
+  pointer-events: auto; /* 막대 자체는 클릭/드래그 가능 */
+}
+/* 드래그 중엔 막대가 포인터를 가리지 않게 → 드롭 대상(시간 행) 판정 */
+.cal-day__bars.is-dragging .cal-bar {
+  pointer-events: none;
 }
 .cal-bar.is-range {
-  border-left-style: double;
   border-left-width: 5px;
+  border-left-style: double;
+}
+.cal-bar.is-deadline {
+  border-left-width: 3px;
+  font-weight: 500;
 }
 .cal-bar.is-done {
   opacity: 0.5;

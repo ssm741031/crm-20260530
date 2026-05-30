@@ -375,67 +375,96 @@ export default function CalendarPage() {
     );
   }
 
-  // ===== 일간 (운영시간 시간대) =====
+  // ===== 일간 (운영시간 시간대 — 시간 비례 타임바) =====
   function renderDay() {
     const dayTasks = tasksOnDate(filtered, cursor);
-    const hourOf = (t: Task) => {
-      const time = t.timeType === "range" ? t.startTime : t.endTime;
-      const h = time ? Number(time.split(":")[0]) : -1;
-      return h;
+    const PX_PER_HOUR = 48;
+    const gridStartMin = DAY_LO * 60; // 07:00
+    const gridEndMin = (DAY_HI + 1) * 60; // 22:00 (마지막 행 끝)
+    const minToY = (min: number) =>
+      ((Math.max(gridStartMin, Math.min(gridEndMin, min)) - gridStartMin) *
+        PX_PER_HOUR) /
+      60;
+    // 표시 기준 분: 구간형=시작, 마감형=마감
+    const baseMin = (t: Task) => {
+      const s = t.timeType === "range" ? t.startTime : t.endTime;
+      return s ? timeToMin(s) : null;
     };
+    // 운영시간 밖이거나 시간 없음 → "그 외" 목록
     const other = dayTasks.filter((t) => {
-      const h = hourOf(t);
-      return h < DAY_HOURS[0] || h > DAY_HOURS[DAY_HOURS.length - 1];
+      const m = baseMin(t);
+      return m === null || m < gridStartMin || m >= gridEndMin;
     });
+    const inGrid = dayTasks.filter((t) => !other.includes(t));
+
     return (
       <div className="cal-day">
         {other.length > 0 && (
-          <div className="cal-day__row">
-            <div className="cal-day__h">그 외</div>
-            <div className="cal-day__slot">{other.map((t) => chip(t))}</div>
+          <div className="cal-day__other">
+            <span className="cal-day__h">그 외</span>
+            <div className="cal-day__otherlist">{other.map((t) => chip(t))}</div>
           </div>
         )}
-        {DAY_HOURS.map((h) => {
-          const inHour = dayTasks.filter((t) => hourOf(t) === h);
-          return (
+        <div
+          className="cal-day__grid"
+          style={{ height: PX_PER_HOUR * DAY_HOURS.length }}
+        >
+          {/* 배경 시간 행 (드래그 드롭·더블클릭 새 할일) */}
+          {DAY_HOURS.map((h) => (
             <div
-              className={
-                "cal-day__row" +
-                (drag.dragging && overHour === h ? " is-dragover" : "")
-              }
               key={h}
               data-hour={h}
+              className={
+                "cal-day__hrow" +
+                (drag.dragging && overHour === h ? " is-dragover" : "")
+              }
+              style={{ height: PX_PER_HOUR }}
+              onDoubleClick={() => openNew(cursor)}
             >
-              <div className="cal-day__h">{String(h).padStart(2, "0")}:00</div>
-              <div
-                className="cal-day__slot"
-                onDoubleClick={() => openNew(cursor)}
-              >
-                {inHour.map((t) => (
-                  <button
-                    key={t.id}
-                    className={
-                      "cal-bar" +
-                      (t.done ? " is-done" : "") +
-                      (t.timeType === "range" ? " is-range" : "")
-                    }
-                    style={{ "--chip": catColor(t.categoryId) } as React.CSSProperties}
-                    onPointerDown={(e) => drag.start(e, { kind: "time", task: t })}
-                    onClick={() => {
-                      if (drag.didDrag()) return;
-                      setEditing(t);
-                    }}
-                  >
-                    {t.timeType === "range"
-                      ? `${t.startTime}~${t.endTime} `
-                      : `${t.endTime ?? ""} `}
-                    {t.title}
-                  </button>
-                ))}
-              </div>
+              <span className="cal-day__h">{String(h).padStart(2, "0")}:00</span>
             </div>
-          );
-        })}
+          ))}
+          {/* 막대 오버레이 (시간 비례 위치) */}
+          <div className={"cal-day__bars" + (drag.dragging ? " is-dragging" : "")}>
+            {inGrid.map((t) => {
+              const isRange =
+                t.timeType === "range" && !!t.startTime && !!t.endTime;
+              const startMin = isRange
+                ? timeToMin(t.startTime!)
+                : timeToMin(t.endTime ?? "00:00");
+              const endMin = isRange ? timeToMin(t.endTime!) : startMin;
+              const top = minToY(startMin);
+              const height = isRange ? Math.max(20, minToY(endMin) - top) : 22;
+              return (
+                <button
+                  key={t.id}
+                  className={
+                    "cal-bar" +
+                    (t.done ? " is-done" : "") +
+                    (isRange ? " is-range" : " is-deadline")
+                  }
+                  style={
+                    {
+                      "--chip": catColor(t.categoryId),
+                      top,
+                      height,
+                    } as React.CSSProperties
+                  }
+                  onPointerDown={(e) => drag.start(e, { kind: "time", task: t })}
+                  onClick={() => {
+                    if (drag.didDrag()) return;
+                    setEditing(t);
+                  }}
+                >
+                  {isRange
+                    ? `${t.startTime}~${t.endTime} `
+                    : `${t.endTime ?? ""} `}
+                  {t.title}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     );
   }
