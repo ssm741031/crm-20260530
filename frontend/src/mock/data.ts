@@ -42,6 +42,19 @@ export const mockCustomers: Customer[] = [
     memo: "",
     consent: { smsConsent: "미확인", kakaoConsent: "미확인", consentDate: null },
   },
+  // Sprint 11 권한 필터 검증용 — u3 가 아닌 u2(김팀장) owner.
+  // u3 로 로그인했을 때 검색 결과에 나오지 않아야 함 (시나리오 7).
+  {
+    id: "cust3",
+    name: "박타팀(샘플)",
+    phone: "010-0000-9999",
+    product: "장기보험",
+    status: "진행중",
+    renewalDate: "2026-09-10",
+    ownerId: "u2",
+    memo: "권한 테스트용 — u3에겐 안 보여야 함",
+    consent: { smsConsent: "미확인", kakaoConsent: "미확인", consentDate: null },
+  },
 ];
 
 const emptyShare = {
