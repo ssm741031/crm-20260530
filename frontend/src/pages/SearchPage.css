@@ -1,0 +1,99 @@
+/* SearchPage — Sprint 11 통합검색 결과 페이지 */
+.search-page {
+  padding: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.search-page--empty,
+.search-page--loading {
+  text-align: center;
+  color: var(--text-muted, #6b7280);
+  padding: 48px 16px;
+}
+
+.search-page__hint {
+  font-size: 13px;
+  color: var(--text-muted, #9ca3af);
+  margin-top: 8px;
+}
+
+.search-page__title {
+  font-size: 18px;
+  margin: 0 0 16px 0;
+  color: var(--text-strong, #111827);
+}
+
+.search-page__total {
+  font-weight: 400;
+  color: var(--text-muted, #6b7280);
+  margin-left: 6px;
+}
+
+.search-section {
+  margin-bottom: 24px;
+}
+
+.search-section__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.search-section__count {
+  background: var(--bg-soft, #f3f4f6);
+  color: var(--text-muted, #6b7280);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.search-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  font: inherit;
+}
+
+.search-hit:hover {
+  background: var(--bg-soft, #f9fafb);
+  border-color: var(--border-strong, #d1d5db);
+}
+
+.search-hit__title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-strong, #111827);
+}
+
+.search-hit__subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+}
+
+@media (max-width: 768px) {
+  .search-page {
+    padding: 12px;
+  }
+}

@@ -20,6 +20,8 @@ import type {
   Customer,
   Pipeline,
   PipelineProduct,
+  SearchHit,
+  SearchResult,
   Task,
   User,
 } from "../types";
@@ -32,6 +34,12 @@ import {
   isOverdue,
   nextDueAt,
 } from "../utils/pipeline";
+import { getCurrentUser } from "./auth";
+import {
+  canViewCustomer,
+  canViewPipeline,
+  canViewTask,
+} from "../utils/permission";
 
 // 서버 지연을 흉내내는 작은 헬퍼 (로딩 상태 테스트용)
 function delay<T>(data: T, ms = 120): Promise<T> {
@@ -271,5 +279,100 @@ export const api = {
     p.delays = [...p.delays, { stageNo, reason: reason.trim(), days }];
     recalcOverdue(p);
     return delay(clonePipeline(p));
+  },
+
+  // ----- 통합검색 (Sprint 11) -----
+  /** 고객·할일·파이프라인 통합 검색.
+   *  결정사항(2026-05-31): 매칭 필드 1차 = 고객 이름·전화 / 할일 title /
+   *    파이프라인 차량번호·차대번호 + (간접) 고객 이름.
+   *  결정사항(2026-05-31): currentUser 권한 필터 적용 (대표=전체 / 그 외=본인 owner).
+   *  대소문자 무시 + 공백 trim. 빈 검색어는 빈 결과 반환.
+   */
+  searchAll: (query: string): Promise<SearchResult> => {
+    const q = (query ?? "").trim().toLowerCase();
+    if (!q) {
+      return delay({ customers: [], tasks: [], pipelines: [], total: 0 });
+    }
+    const user = getCurrentUser();
+    const contains = (v: string | null | undefined): boolean =>
+      !!v && v.toLowerCase().includes(q);
+
+    // 고객 — 이름 / 전화
+    const customerHits: SearchHit[] = mockCustomers
+      .filter((c) => canViewCustomer(user, c))
+      .map<SearchHit | null>((c) => {
+        if (contains(c.name)) {
+          return { kind: "customer", id: c.id, title: c.name, subtitle: c.product, matched: "name" };
+        }
+        if (contains(c.phone)) {
+          return { kind: "customer", id: c.id, title: c.name, subtitle: c.phone, matched: "phone" };
+        }
+        return null;
+      })
+      .filter((h): h is SearchHit => h !== null);
+
+    // 할일 — title (권한 체크에 mockCustomers 필요)
+    const taskHits: SearchHit[] = tasks
+      .filter((t) => canViewTask(user, t, mockCustomers))
+      .map<SearchHit | null>((t) => {
+        if (contains(t.title)) {
+          const cust = t.customerId
+            ? mockCustomers.find((c) => c.id === t.customerId)
+            : null;
+          return {
+            kind: "task",
+            id: t.id,
+            title: t.title,
+            subtitle: cust ? cust.name : (t.endDate ?? undefined),
+            matched: "title",
+          };
+        }
+        return null;
+      })
+      .filter((h): h is SearchHit => h !== null);
+
+    // 파이프라인 — 차량번호 / 차대번호 / 고객 이름 (간접)
+    const pipelineHits: SearchHit[] = pipelines
+      .filter((p) => canViewPipeline(user, p, mockCustomers))
+      .map<SearchHit | null>((p) => {
+        const cust = mockCustomers.find((c) => c.id === p.customerId);
+        if (contains(p.vehicleNo)) {
+          return {
+            kind: "pipeline",
+            id: p.id,
+            title: `🚗 ${p.vehicleNo}`,
+            subtitle: cust ? `${cust.name} · ${p.product}` : p.product,
+            matched: "vehicleNo",
+          };
+        }
+        if (contains(p.vehicleVin)) {
+          return {
+            kind: "pipeline",
+            id: p.id,
+            title: `🚗 차대 ${p.vehicleVin}`,
+            subtitle: cust ? `${cust.name} · ${p.product}` : p.product,
+            matched: "vehicleVin",
+          };
+        }
+        if (cust && contains(cust.name)) {
+          return {
+            kind: "pipeline",
+            id: p.id,
+            title: `${cust.name} · ${p.product}`,
+            subtitle: `단계 ${p.currentStage}/${p.stages.length}`,
+            matched: "customerName",
+          };
+        }
+        return null;
+      })
+      .filter((h): h is SearchHit => h !== null);
+
+    const result: SearchResult = {
+      customers: customerHits,
+      tasks: taskHits,
+      pipelines: pipelineHits,
+      total: customerHits.length + taskHits.length + pipelineHits.length,
+    };
+    return delay(result);
   },
 };

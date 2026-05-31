@@ -1,6 +1,50 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useState } from "react";
+import type { FormEvent } from "react";
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { NAV_ITEMS } from "./nav";
 import "./AppShell.css";
+
+/** 통합검색 입력바 — PC 사이드바 상단 + 모바일 헤더에서 공유 (Sprint 11) */
+function SearchBar() {
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+  const [shake, setShake] = useState(false);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = q.trim();
+    if (!trimmed) {
+      // 빈 입력 가드 — 흔들림 피드백 (시나리오 3)
+      setShake(true);
+      setTimeout(() => setShake(false), 350);
+      return;
+    }
+    navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+  };
+
+  return (
+    <form className="search-bar" onSubmit={submit} role="search">
+      <input
+        type="search"
+        className={
+          "search-bar__input" + (shake ? " search-bar__input--shake" : "")
+        }
+        placeholder="고객·할일·차량번호 검색"
+        aria-label="통합검색"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      <button type="submit" className="search-bar__btn" aria-label="검색">
+        🔍
+      </button>
+    </form>
+  );
+}
 
 /**
  * 앱 공통 레이아웃(셸).
@@ -18,6 +62,7 @@ export default function AppShell() {
       {/* ===== 사이드바 (PC) ===== */}
       <aside className="shell__sidebar">
         <div className="shell__brand">사내 CRM</div>
+        <SearchBar />
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
@@ -34,7 +79,13 @@ export default function AppShell() {
 
       {/* ===== 본문 ===== */}
       <div className="shell__main">
-        <header className="shell__header">{current}</header>
+        <header className="shell__header">
+          <span className="shell__header-title">{current}</span>
+          {/* 모바일 헤더에서만 보이는 검색바 */}
+          <div className="shell__header-search">
+            <SearchBar />
+          </div>
+        </header>
         <main className="shell__content">
           <Outlet />
         </main>

@@ -12,6 +12,7 @@ import CategoriesPage from "./pages/CategoriesPage";
 import CalendarPage from "./pages/CalendarPage";
 import HabitsPage from "./pages/HabitsPage";
 import PipelinePage from "./pages/PipelinePage";
+import SearchPage from "./pages/SearchPage";
 import "./index.css";
 
 const router = createBrowserRouter([
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
       { path: "habits", element: <HabitsPage /> },
       { path: "pipeline", element: <PipelinePage /> },
       { path: "categories", element: <CategoriesPage /> },
+      { path: "search", element: <SearchPage /> },
     ],
   },
 ]);

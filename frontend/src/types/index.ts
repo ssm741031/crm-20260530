@@ -149,3 +149,19 @@ export interface Stage {
   isOverdue: boolean;
   extendedDueAt: string | null; // 연장 마감일
 }
+
+/** 통합검색 결과 한 건 (Sprint 11) */
+export type SearchHitKind = "customer" | "task" | "pipeline";
+export interface SearchHit {
+  kind: SearchHitKind;
+  id: string;
+  title: string;        // 메인 표시 (예: 고객명, 할일 제목, 파이프라인 차량번호)
+  subtitle?: string;    // 보조 표시 (예: 상품·상태, 마감일, 고객명)
+  matched?: string;     // 어떤 필드가 매칭됐는지 (디버그/표시용, 예: "phone", "vehicleNo")
+}
+export interface SearchResult {
+  customers: SearchHit[];
+  tasks: SearchHit[];
+  pipelines: SearchHit[];
+  total: number;
+}
