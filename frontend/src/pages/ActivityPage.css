@@ -1,0 +1,183 @@
+.act {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 900px;
+}
+
+.act-row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.act-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  flex: 1;
+  min-width: 200px;
+}
+.act-card__label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+.act-card__sub {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+}
+
+/* 큰 숫자 (7/30일) */
+.act-bignum {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+/* 오늘 처리율 원형 게이지 (conic-gradient) */
+.act-today {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.act-gauge {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--color-primary) calc(var(--rate) * 1%),
+    var(--color-border) 0
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: var(--space-2) 0;
+}
+.act-gauge::before {
+  content: "";
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+.act-gauge__pct {
+  position: relative;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* 7일 완료 추이 막대 */
+.act-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  height: 100px;
+}
+.act-trend__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.act-trend__barwrap {
+  width: 100%;
+  height: 70px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.act-trend__bar {
+  width: 60%;
+  min-height: 2px;
+  background: var(--color-primary);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: height 0.2s;
+}
+.act-trend__lab {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.act-trend__n {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* 카테고리별 분포 */
+.act-dist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.act-dist__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.act-dist__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 130px;
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+}
+.act-dist__barwrap {
+  flex: 1;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  height: 14px;
+  overflow: hidden;
+}
+.act-dist__bar {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  min-width: 2px;
+}
+.act-dist__num {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  width: 110px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* 습관 streak */
+.act-habits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.act-habits__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.act-habits__row:last-child {
+  border-bottom: none;
+}
+.act-habits__s {
+  font-weight: 600;
+  color: var(--color-warning);
+}
+
+@media (max-width: 768px) {
+  .act-dist__name {
+    width: 90px;
+  }
+  .act-dist__num {
+    width: 84px;
+    font-size: 11px;
+  }
+}
