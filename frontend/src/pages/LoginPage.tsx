@@ -2,7 +2,7 @@
  * mock 로그인 폼 — DEV ONLY 안내 포함
  * 로그인 성공 시 from 으로 이동 (없으면 /tasks)
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
@@ -23,11 +23,12 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // 이미 로그인 상태면 from 으로 이동
-  if (user) {
-    navigate(from, { replace: true });
-    return null;
-  }
+  // 이미 로그인 상태면 from 으로 이동 (함수 본체에서 navigate 호출은 안티패턴 → useEffect)
+  useEffect(() => {
+    if (user) {
+      navigate(from, { replace: true });
+    }
+  }, [user, from, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
