@@ -15,22 +15,27 @@ import PipelinePage from "./pages/PipelinePage";
 import SearchPage from "./pages/SearchPage";
 import "./index.css";
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <AppShell />,
-    children: [
-      { index: true, element: <Navigate to="/tasks" replace /> },
-      { path: "tasks", element: <TasksPage /> },
-      { path: "customers", element: <CustomersPage /> },
-      { path: "calendar", element: <CalendarPage /> },
-      { path: "habits", element: <HabitsPage /> },
-      { path: "pipeline", element: <PipelinePage /> },
-      { path: "categories", element: <CategoriesPage /> },
-      { path: "search", element: <SearchPage /> },
-    ],
-  },
-]);
+// Sprint 12: 고보험 서버 /crm 패스 서브배포 — basename 적용
+// 로컬 dev 와 prod 모두 동일하게 /crm prefix 사용 (Vite base 와 일치)
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <AppShell />,
+      children: [
+        { index: true, element: <Navigate to="/tasks" replace /> },
+        { path: "tasks", element: <TasksPage /> },
+        { path: "customers", element: <CustomersPage /> },
+        { path: "calendar", element: <CalendarPage /> },
+        { path: "habits", element: <HabitsPage /> },
+        { path: "pipeline", element: <PipelinePage /> },
+        { path: "categories", element: <CategoriesPage /> },
+        { path: "search", element: <SearchPage /> },
+      ],
+    },
+  ],
+  { basename: "/crm" },
+);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
