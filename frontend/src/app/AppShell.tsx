@@ -8,6 +8,9 @@ import {
 } from "react-router-dom";
 import { NAV_ITEMS } from "./nav";
 import { useAuth } from "../hooks/useAuth";
+import { NotificationProvider } from "../contexts/NotificationContext";
+import NotificationPermissionBanner from "../components/NotificationPermissionBanner";
+import ToastContainer from "../components/ToastContainer";
 import "./AppShell.css";
 
 /** 헤더 우측의 사용자명 + 로그아웃 (Sprint 13) */
@@ -73,13 +76,15 @@ function SearchBar() {
  * - 모바일(≤768px): 하단 탭바 + 본문 (CSS 미디어쿼리로 자동 전환)
  * 각 화면(페이지)은 <Outlet /> 자리에 렌더된다.
  */
-export default function AppShell() {
+function ShellInner() {
   const location = useLocation();
   const current =
     NAV_ITEMS.find((n) => location.pathname.startsWith(n.to))?.label ?? "";
 
   return (
     <div className="shell">
+      {/* Sprint 14: 알림 권한 배너 (default 일 때만 표시) */}
+      <NotificationPermissionBanner />
       {/* ===== 사이드바 (PC) ===== */}
       <aside className="shell__sidebar">
         <div className="shell__brand">사내 CRM</div>
@@ -129,6 +134,22 @@ export default function AppShell() {
           </NavLink>
         ))}
       </nav>
+      {/* Sprint 14: in-app 토스트 컨테이너 (전역 fixed) */}
+      <ToastContainer />
     </div>
+  );
+}
+
+/**
+ * 앱 공통 레이아웃(셸).
+ * - PC: 왼쪽 사이드바 + 본문
+ * - 모바일(≤768px): 하단 탭바 + 본문 (CSS 미디어쿼리로 자동 전환)
+ * - Sprint 14: NotificationProvider 로 알림 컨텍스트 제공 (Router 안이어야 useNavigate 동작)
+ */
+export default function AppShell() {
+  return (
+    <NotificationProvider>
+      <ShellInner />
+    </NotificationProvider>
   );
 }
