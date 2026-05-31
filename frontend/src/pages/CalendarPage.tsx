@@ -24,7 +24,10 @@ import {
 import { usePointerDrag } from "../hooks/usePointerDrag";
 import "./CalendarPage.css";
 
-type DragPayload = { kind: "date" | "time"; task: Task };
+type DragPayload = {
+  kind: "date" | "time" | "resize-start" | "resize-end";
+  task: Task;
+};
 const DAY_LO = 7; // 운영시간 하한(시)
 const DAY_HI = 21; // 운영시간 상한(시)
 
@@ -123,13 +126,28 @@ export default function CalendarPage() {
         api.updateTask(t.id, { endDate: target }).then(refresh);
       }
     } else {
+      // 드롭 지점 Y → 15분 스냅된 분(min). 시간 행(data-hour) 기준 환산.
       const row = el?.closest("[data-hour]");
       if (!row) return;
       const hour = Number(row.getAttribute("data-hour"));
       const rect = row.getBoundingClientRect();
       const frac = Math.min(0.999, Math.max(0, (y - rect.top) / rect.height));
       const min = clampMin(snap15(hour * 60 + frac * 60), DAY_LO, DAY_HI);
-      if (t.timeType === "range" && t.startTime && t.endTime) {
+
+      if (p.kind === "resize-start") {
+        // 구간형 시작 끝만 이동 — 종료보다 늦으면 무시(최소 15분 유지)
+        if (t.timeType !== "range" || !t.startTime || !t.endTime) return;
+        if (min >= timeToMin(t.endTime)) return;
+        if (min === timeToMin(t.startTime)) return;
+        api.updateTask(t.id, { startTime: minToTime(min) }).then(refresh);
+      } else if (p.kind === "resize-end") {
+        // 구간형 종료 끝만 이동 — 시작보다 이르면 무시
+        if (t.timeType !== "range" || !t.startTime || !t.endTime) return;
+        if (min <= timeToMin(t.startTime)) return;
+        if (min === timeToMin(t.endTime)) return;
+        api.updateTask(t.id, { endTime: minToTime(min) }).then(refresh);
+      } else if (t.timeType === "range" && t.startTime && t.endTime) {
+        // 막대 가운데 — 길이 유지한 채 통째로 이동
         const delta = min - timeToMin(t.startTime);
         if (delta === 0) return;
         api
@@ -249,7 +267,7 @@ export default function CalendarPage() {
       {view === "year" && renderYear()}
 
       <p className="cal__note">
-        🔜 항목 끌어 날짜·시간 이동(드래그)은 다음 단계. 반복 항목 자동 전개는 서버 연결 후 — 지금은 저장된 항목만 표시.
+        💡 항목을 끌어 날짜·시간 이동 / 일간 구간형은 막대 양끝을 끌어 길이 조절. 반복 항목 자동 전개는 서버 연결 후 — 지금은 저장된 항목만 표시.
       </p>
 
       {editing !== null && (
@@ -476,10 +494,33 @@ export default function CalendarPage() {
                     setEditing(t);
                   }}
                 >
+                  {/* 구간형: 양끝 리사이즈 핸들(시작/종료 시각 개별 조절) */}
+                  {b.isRange && (
+                    <span
+                      className="cal-bar__handle cal-bar__handle--top"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        drag.start(e, { kind: "resize-start", task: t });
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      title="시작 시각 조절"
+                    />
+                  )}
                   {b.isRange
                     ? `${t.startTime}~${t.endTime} `
                     : `${t.endTime ?? ""} `}
                   {t.title}
+                  {b.isRange && (
+                    <span
+                      className="cal-bar__handle cal-bar__handle--bottom"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        drag.start(e, { kind: "resize-end", task: t });
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      title="종료 시각 조절"
+                    />
+                  )}
                 </button>
               );
             })}
