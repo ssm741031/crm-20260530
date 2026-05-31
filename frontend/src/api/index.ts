@@ -176,6 +176,39 @@ export const api = {
     return delay(undefined);
   },
 
+  /** 목록 드래그 재배치 (Sprint 16) — 순서 변경 + (다른 그룹이면) 카테고리 변경.
+   *  - id: 옮길 할 일
+   *  - toCategoryId: 편입할 카테고리 (같으면 순서만)
+   *  - beforeId: 이 할 일 "앞"에 놓는다. null이면 해당 카테고리 그룹의 맨 끝.
+   *  배열 순서 = 화면 표시 순서이므로 splice로 재배치한다. */
+  moveTask: (
+    id: string,
+    toCategoryId: string,
+    beforeId: string | null
+  ): Promise<Task> => {
+    const moving = tasks.find((t) => t.id === id);
+    if (!moving) return Promise.reject(new Error("할 일을 찾을 수 없습니다."));
+    // 카테고리 반영
+    const moved: Task = { ...moving, categoryId: toCategoryId };
+    // 목록에서 제거 후 삽입 위치 계산
+    const rest = tasks.filter((t) => t.id !== id);
+    let insertAt: number;
+    if (beforeId) {
+      insertAt = rest.findIndex((t) => t.id === beforeId);
+      if (insertAt < 0) insertAt = rest.length;
+    } else {
+      // 그룹 끝: 같은 카테고리 마지막 항목 다음
+      const lastIdx = rest.reduce(
+        (acc, t, i) => (t.categoryId === toCategoryId ? i : acc),
+        -1
+      );
+      insertAt = lastIdx < 0 ? rest.length : lastIdx + 1;
+    }
+    rest.splice(insertAt, 0, moved);
+    tasks = rest;
+    return delay({ ...moved });
+  },
+
   /** 완료 토글 (작업완료는 사용자 확인 클릭으로만 — 계획서 §4.2)
    *  완료로 전환 + autoRegen + 주기형(매주/매월/매년)이면 다음 회차를 즉시 생성.
    *  (실제 '리드타임 전 미리 생성' 스케줄링은 서버 몫 — 계획서 §5-B.3) */

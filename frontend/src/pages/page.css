@@ -103,6 +103,57 @@
   background: var(--chip, var(--cat-default));
 }
 
+/* 할 일 카테고리별 그룹 (Sprint 16) */
+.task-group {
+  margin-bottom: var(--space-5);
+  border-radius: var(--radius-md);
+  transition: background 0.12s;
+}
+.task-group.is-dragover {
+  background: var(--color-primary-soft);
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 4px;
+}
+.task-group__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: 0 var(--space-1);
+}
+.task-group__name {
+  font-weight: 600;
+}
+.task-group__count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0 var(--space-2);
+}
+.cat-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.task-group__empty {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  text-align: center;
+  font-size: var(--text-sm);
+}
+
+/* 드래그 가능한 카드 */
+.card--drag {
+  touch-action: none; /* 모바일 터치 드래그 (Pointer Event 단일 코드, §5.7) */
+}
+.card--drag.is-dropbefore {
+  border-top: 3px solid var(--color-primary);
+}
+
 /* 수신동의 배지 (고객 카드) */
 .consent-row {
   display: flex;
