@@ -3,7 +3,14 @@
    ⚠️ 실제 고객 개인정보 금지. 전부 가공의 샘플.
    서버 연결 시 이 파일은 더 이상 쓰이지 않는다.
    ============================================================ */
-import type { Category, Customer, Pipeline, Task, User } from "../types";
+import type {
+  Category,
+  Customer,
+  NoticeLog,
+  Pipeline,
+  Task,
+  User,
+} from "../types";
 
 export const mockUsers: User[] = [
   { id: "u1", name: "대표", loginId: "boss", role: "대표" },
@@ -176,5 +183,27 @@ export const mockPipelines: Pipeline[] = [
       { id: "p2-s3", pipelineId: "p2", stageNo: 3, name: "재계약 (고객 요청일)", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
       { id: "p2-s4", pipelineId: "p2", stageNo: 4, name: "증권 안내", done: false, doneAt: null, dueAt: null, isOverdue: false, extendedDueAt: null },
     ],
+  },
+];
+
+/** 샘플 안내 기록 (계획서 §2.4-b) — 가공 데이터 */
+export const mockNoticeLogs: NoticeLog[] = [
+  {
+    id: "nl1",
+    pipelineId: "p1",
+    stageNo: 2,
+    channel: "문자",
+    memo: "보장분석 위해 개인정보 동의서 요청 문자 발송",
+    sentAt: "2026-05-21T10:30:00",
+    createdBy: "u3",
+  },
+  {
+    id: "nl2",
+    pipelineId: "p2",
+    stageNo: 1,
+    channel: "카톡",
+    memo: "무사고·마일리지 할인 요건 안내",
+    sentAt: "2026-05-31T09:15:00",
+    createdBy: "u3",
   },
 ];

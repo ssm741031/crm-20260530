@@ -12,6 +12,7 @@ import CategoriesPage from "./pages/CategoriesPage";
 import CalendarPage from "./pages/CalendarPage";
 import HabitsPage from "./pages/HabitsPage";
 import PipelinePage from "./pages/PipelinePage";
+import NoticeLogsPage from "./pages/NoticeLogsPage";
 import SearchPage from "./pages/SearchPage";
 import LoginPage from "./pages/LoginPage";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -37,6 +38,7 @@ const router = createBrowserRouter(
         { path: "calendar", element: <CalendarPage /> },
         { path: "habits", element: <HabitsPage /> },
         { path: "pipeline", element: <PipelinePage /> },
+        { path: "notices", element: <NoticeLogsPage /> },
         { path: "categories", element: <CategoriesPage /> },
         { path: "search", element: <SearchPage /> },
       ],

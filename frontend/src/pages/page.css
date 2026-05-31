@@ -102,3 +102,29 @@
   color: #fff;
   background: var(--chip, var(--cat-default));
 }
+
+/* 수신동의 배지 (고객 카드) */
+.consent-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.consent-badge {
+  font-size: 11px;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+.consent-badge--ok {
+  color: var(--color-success);
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.consent-badge--no {
+  color: var(--color-danger);
+  background: #fef2f2;
+  border-color: #fecaca;
+}

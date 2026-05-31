@@ -66,3 +66,7 @@ ul {
 .btn--danger:hover {
   background: #fef2f2;
 }
+.btn--sm {
+  padding: 4px var(--space-3);
+  font-size: var(--text-sm);
+}

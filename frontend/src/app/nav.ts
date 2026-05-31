@@ -11,5 +11,6 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/calendar", label: "캘린더", icon: "📅" },
   { to: "/habits", label: "습관", icon: "🔁" },
   { to: "/pipeline", label: "파이프라인", icon: "📊" },
+  { to: "/notices", label: "안내기록", icon: "📨" },
   { to: "/categories", label: "카테고리", icon: "🏷️" },
 ];

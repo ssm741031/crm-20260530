@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
-import type { Customer, Pipeline, PipelineProduct, Stage } from "../types";
+import type {
+  Customer,
+  NoticeLog,
+  Pipeline,
+  PipelineProduct,
+  Stage,
+  User,
+} from "../types";
 import {
   PRODUCT_LIST,
   effectiveDue,
@@ -11,11 +18,14 @@ import {
 } from "../utils/pipeline";
 import { PIPELINE_TEMPLATES } from "../utils/pipeline";
 import { todayIso } from "../utils/calendar";
+import NoticeLogPanel from "../components/NoticeLogPanel";
 import "./PipelinePage.css";
 
 export default function PipelinePage() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [noticeLogs, setNoticeLogs] = useState<NoticeLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -35,16 +45,28 @@ export default function PipelinePage() {
   function refresh() {
     return api.getPipelines().then(setPipelines);
   }
+  function refreshNotices() {
+    return api.getNoticeLogs().then(setNoticeLogs);
+  }
   useEffect(() => {
-    Promise.all([api.getPipelines(), api.getCustomers()]).then(([p, cu]) => {
+    Promise.all([
+      api.getPipelines(),
+      api.getCustomers(),
+      api.getUsers(),
+      api.getNoticeLogs(),
+    ]).then(([p, cu, us, nl]) => {
       setPipelines(p);
       setCustomers(cu);
+      setUsers(us);
+      setNoticeLogs(nl);
       setLoading(false);
     });
   }, []);
 
   const custName = (id: string) =>
     customers.find((c) => c.id === id)?.name ?? "(고객)";
+  const userName = (id: string) =>
+    users.find((u) => u.id === id)?.name ?? "(직원)";
 
   const selected = useMemo(
     () => pipelines.find((p) => p.id === selectedId) ?? null,
@@ -321,6 +343,9 @@ export default function PipelinePage() {
     const overdue = isOverdue(s);
     const due = effectiveDue(s);
     const tpl = PIPELINE_TEMPLATES[p.product][s.stageNo - 1];
+    const stageNotices = noticeLogs.filter(
+      (n) => n.pipelineId === p.id && n.stageNo === s.stageNo
+    );
     return (
       <li
         key={s.id}
@@ -333,7 +358,14 @@ export default function PipelinePage() {
       >
         <div className="pl-stage__no">{s.done ? "✓" : s.stageNo}</div>
         <div className="pl-stage__body">
-          <div className="pl-stage__name">{s.name}</div>
+          <div className="pl-stage__name">
+            {s.name}
+            {stageNotices.length > 0 && (
+              <span className="pl-notice-badge" title="안내 기록 있음">
+                📨 안내 {stageNotices.length}
+              </span>
+            )}
+          </div>
           <div className="pl-stage__meta muted">
             {ruleLabel(tpl.rule)}
             {s.done
@@ -345,6 +377,15 @@ export default function PipelinePage() {
               : " · 마감 미정"}
             {overdue && <span className="pl-late-badge">지연</span>}
           </div>
+
+          {/* 안내 기록 패널 (모든 단계에서 추가·조회 가능 — 계획서 §2.4-b) */}
+          <NoticeLogPanel
+            pipelineId={p.id}
+            stageNo={s.stageNo}
+            logs={stageNotices}
+            userName={userName}
+            onChanged={refreshNotices}
+          />
 
           {isCurrent && (
             <div className="pl-stage__actions">

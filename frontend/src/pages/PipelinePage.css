@@ -4,10 +4,7 @@
   gap: var(--space-3);
 }
 
-.btn--sm {
-  padding: 4px var(--space-3);
-  font-size: var(--text-sm);
-}
+/* .btn--sm 은 전역 index.css 로 이동 */
 
 /* 새 청약 폼 */
 .pl-new {
@@ -146,6 +143,15 @@
   margin-left: var(--space-2);
   color: var(--color-danger);
   font-weight: 700;
+}
+.pl-notice-badge {
+  margin-left: var(--space-2);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
 }
 .pl-stage__actions {
   display: flex;

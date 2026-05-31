@@ -1,0 +1,69 @@
+.nl {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.nl__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.nl__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
+  flex-wrap: wrap;
+}
+.nl__ch {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  color: #fff;
+}
+.nl__ch--문자 { background: var(--color-primary); }
+.nl__ch--카톡 { background: #d97706; }
+.nl__ch--전화 { background: var(--color-success); }
+
+.nl__memo {
+  flex: 1;
+  min-width: 120px;
+}
+.nl__meta {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.nl__del {
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.nl__del:hover {
+  color: var(--color-danger);
+}
+
+.nl__add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.nl__channels {
+  display: flex;
+  gap: var(--space-1);
+}
+.nl__add .field__input {
+  flex: 1;
+  min-width: 140px;
+}
+.nl__addbtn {
+  align-self: flex-start;
+}

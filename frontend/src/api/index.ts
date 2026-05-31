@@ -11,13 +11,17 @@
 import {
   mockCategories,
   mockCustomers,
+  mockNoticeLogs,
   mockPipelines,
   mockTasks,
   mockUsers,
 } from "../mock/data";
 import type {
   Category,
+  Consent,
   Customer,
+  NoticeChannel,
+  NoticeLog,
   Pipeline,
   PipelineProduct,
   SearchHit,
@@ -49,6 +53,11 @@ function delay<T>(data: T, ms = 120): Promise<T> {
 // 변경 가능한 복사본 (목 상태)
 let categories: Category[] = mockCategories.map((c) => ({ ...c }));
 let tasks: Task[] = mockTasks.map((t) => ({ ...t }));
+let customers: Customer[] = mockCustomers.map((c) => ({
+  ...c,
+  consent: { ...c.consent },
+}));
+let noticeLogs: NoticeLog[] = mockNoticeLogs.map((n) => ({ ...n }));
 
 // 파이프라인 깊은 복사(단계·지연 배열 포함)
 const clonePipeline = (p: Pipeline): Pipeline => ({
@@ -62,6 +71,7 @@ let pipelines: Pipeline[] = mockPipelines.map(clonePipeline);
 let categorySeq = 1;
 let taskSeq = 1;
 let pipelineSeq = 1;
+let noticeSeq = 1;
 const newCategoryId = () => `c-new-${categorySeq++}`;
 const newTaskId = () => `t-new-${taskSeq++}`;
 const newPipelineId = () => `p-new-${pipelineSeq++}`;
@@ -80,7 +90,17 @@ export type TaskInput = Omit<Task, "id" | "done" | "doneAt" | "streak">;
 
 export const api = {
   getUsers: (): Promise<User[]> => delay(mockUsers),
-  getCustomers: (): Promise<Customer[]> => delay(mockCustomers),
+  getCustomers: (): Promise<Customer[]> =>
+    delay(customers.map((c) => ({ ...c, consent: { ...c.consent } }))),
+
+  /** 고객 수신동의 수정 (계획서 §2.4-c) — 정보통신망법 근거 데이터 */
+  updateConsent: (customerId: string, consent: Consent): Promise<Customer> => {
+    customers = customers.map((c) =>
+      c.id === customerId ? { ...c, consent: { ...consent } } : c
+    );
+    const updated = customers.find((c) => c.id === customerId)!;
+    return delay({ ...updated, consent: { ...updated.consent } });
+  },
 
   // ----- 카테고리 -----
   getCategories: (): Promise<Category[]> =>
@@ -378,5 +398,51 @@ export const api = {
       total: customerHits.length + taskHits.length + pipelineHits.length,
     };
     return delay(result);
+  },
+
+  // ----- 안내 기록 (계획서 §2.4-b) -----
+  /** 안내 기록 조회. pipelineId 주면 해당 청약만, 없으면 전체(모아보기 화면용) */
+  getNoticeLogs: (pipelineId?: string): Promise<NoticeLog[]> => {
+    const list = pipelineId
+      ? noticeLogs.filter((n) => n.pipelineId === pipelineId)
+      : noticeLogs;
+    // 최신순 정렬
+    const sorted = [...list].sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1));
+    return delay(sorted.map((n) => ({ ...n })));
+  },
+
+  /** 안내 기록 추가 — 일시·작성자는 시스템 자동 기록(위변조 방지) */
+  addNoticeLog: (input: {
+    pipelineId: string;
+    stageNo: number;
+    channel: NoticeChannel;
+    memo: string;
+  }): Promise<NoticeLog> => {
+    const created: NoticeLog = {
+      id: `nl-new-${noticeSeq++}`,
+      pipelineId: input.pipelineId,
+      stageNo: input.stageNo,
+      channel: input.channel,
+      memo: input.memo.trim(),
+      sentAt: new Date().toISOString(), // 자동
+      createdBy: getCurrentUser()?.id ?? "unknown", // 자동
+    };
+    noticeLogs = [...noticeLogs, created];
+    return delay({ ...created });
+  },
+
+  /** 안내 메모 수정 (모아보기 화면 편집용). 일시·작성자·수단·단계는 불변 */
+  updateNoticeLog: (id: string, memo: string): Promise<NoticeLog> => {
+    noticeLogs = noticeLogs.map((n) =>
+      n.id === id ? { ...n, memo: memo.trim() } : n
+    );
+    const updated = noticeLogs.find((n) => n.id === id)!;
+    return delay({ ...updated });
+  },
+
+  /** 안내 기록 삭제 */
+  deleteNoticeLog: (id: string): Promise<void> => {
+    noticeLogs = noticeLogs.filter((n) => n.id !== id);
+    return delay(undefined);
   },
 };

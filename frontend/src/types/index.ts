@@ -150,6 +150,20 @@ export interface Stage {
   extendedDueAt: string | null; // 연장 마감일
 }
 
+/** 안내 기록 (Notice Log) — 계획서 §2.4-b.
+ *  현재는 영업자가 직접 문자·카톡·전화로 안내하고, 시스템엔 "보냈다는 기록"만 남긴다.
+ *  Phase 3 자동발송의 기반(보낸 메모 → 발송 템플릿). 일시·작성자는 시스템 자동 기록(위변조 방지). */
+export type NoticeChannel = "문자" | "카톡" | "전화";
+export interface NoticeLog {
+  id: string;
+  pipelineId: string;
+  stageNo: number;     // 어느 단계에서 안내했나
+  channel: NoticeChannel;
+  memo: string;        // 보낸 내용 요약 (→ 추후 자동발송 템플릿)
+  sentAt: string;      // 안내 일시 (ISO, 시스템 자동 기록)
+  createdBy: string;   // 기록한 직원 id (시스템 자동)
+}
+
 /** 통합검색 결과 한 건 (Sprint 11) */
 export type SearchHitKind = "customer" | "task" | "pipeline";
 export interface SearchHit {
