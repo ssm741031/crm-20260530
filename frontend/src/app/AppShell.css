@@ -176,3 +176,37 @@
   /* 모바일에선 사이드바가 안 보이므로 그 안의 검색바도 숨김 (헤더 검색바로 대체) */
   .shell__sidebar .search-bar { display: none; }
 }
+
+/* ===== 사용자 배지 (Sprint 13 — 헤더 우측) ===== */
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 13px;
+}
+.user-badge__name {
+  font-weight: 600;
+  color: var(--color-text, #111827);
+}
+.user-badge__role {
+  font-size: 11px;
+  background: var(--color-bg-soft, #f3f4f6);
+  color: var(--color-text-muted, #6b7280);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.user-badge__logout {
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-bg, #fff);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.user-badge__logout:hover {
+  background: var(--color-bg-soft, #f3f4f6);
+}
+@media (max-width: 768px) {
+  .user-badge__role { display: none; }
+}

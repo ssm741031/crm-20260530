@@ -294,6 +294,10 @@ export const api = {
       return delay({ customers: [], tasks: [], pipelines: [], total: 0 });
     }
     const user = getCurrentUser();
+    // Sprint 13: 비로그인 → 검색 결과 없음 (RequireAuth 가 막아도 안전 가드)
+    if (!user) {
+      return delay({ customers: [], tasks: [], pipelines: [], total: 0 });
+    }
     const contains = (v: string | null | undefined): boolean =>
       !!v && v.toLowerCase().includes(q);
 

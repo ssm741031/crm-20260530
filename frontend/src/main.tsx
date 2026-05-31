@@ -13,15 +13,23 @@ import CalendarPage from "./pages/CalendarPage";
 import HabitsPage from "./pages/HabitsPage";
 import PipelinePage from "./pages/PipelinePage";
 import SearchPage from "./pages/SearchPage";
+import LoginPage from "./pages/LoginPage";
+import { AuthProvider } from "./contexts/AuthContext";
+import RequireAuth from "./components/RequireAuth";
 import "./index.css";
 
 // Sprint 12: 고보험 서버 /crm 패스 서브배포 — basename 적용
-// 로컬 dev 와 prod 모두 동일하게 /crm prefix 사용 (Vite base 와 일치)
+// Sprint 13: AuthProvider + /login + RequireAuth 로 보호 라우트 감싸기
 const router = createBrowserRouter(
   [
+    { path: "/login", element: <LoginPage /> },
     {
       path: "/",
-      element: <AppShell />,
+      element: (
+        <RequireAuth>
+          <AppShell />
+        </RequireAuth>
+      ),
       children: [
         { index: true, element: <Navigate to="/tasks" replace /> },
         { path: "tasks", element: <TasksPage /> },
@@ -39,6 +47,8 @@ const router = createBrowserRouter(
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>
 );

@@ -7,7 +7,28 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { NAV_ITEMS } from "./nav";
+import { useAuth } from "../hooks/useAuth";
 import "./AppShell.css";
+
+/** 헤더 우측의 사용자명 + 로그아웃 (Sprint 13) */
+function UserBadge() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  if (!user) return null;
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+  return (
+    <div className="user-badge">
+      <span className="user-badge__name">{user.name}</span>
+      <span className="user-badge__role">{user.role}</span>
+      <button type="button" className="user-badge__logout" onClick={handleLogout}>
+        로그아웃
+      </button>
+    </div>
+  );
+}
 
 /** 통합검색 입력바 — PC 사이드바 상단 + 모바일 헤더에서 공유 (Sprint 11) */
 function SearchBar() {
@@ -85,6 +106,8 @@ export default function AppShell() {
           <div className="shell__header-search">
             <SearchBar />
           </div>
+          {/* 우측: 로그인 사용자명 + 로그아웃 (Sprint 13) */}
+          <UserBadge />
         </header>
         <main className="shell__content">
           <Outlet />
