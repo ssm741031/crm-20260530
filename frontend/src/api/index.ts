@@ -1,21 +1,16 @@
 /* ============================================================
    API 레이어 — 화면이 데이터를 가져오는 "유일한 통로".
-   지금은 목 데이터를 Promise로 반환(서버처럼 비동기).
-   서버 완성 시: 각 함수 안을 fetch("/api/...") 호출로 교체하면 됨.
-   화면 코드는 한 줄도 안 바꿔도 된다.  ← 이게 분리의 핵심
+   Sprint 02: mock → fetch /api/crm/* 일괄 교체 (백엔드 PostgreSQL CRUD).
 
-   ※ 카테고리·할 일은 추가/수정/삭제(CRUD)를 지원한다.
-     지금은 메모리 안의 배열을 직접 바꾼다(목). 새로고침하면 초기화됨.
-     서버 연결 시 같은 함수가 서버에 저장하도록 바뀐다.
+   유지된 mock:
+   - getUsers (백엔드 없음 — Sprint 03 후속)
+   - 카테고리 CRUD (결정사항 §Sprint 02: mock 유지)
+
+   교체된 fetch:
+   - customers / tasks / pipelines / notice-logs CRUD (cookie 자동 첨부)
+   - searchAll: GET 3개 받아서 프론트 측 substring 매칭 (결정사항 §)
    ============================================================ */
-import {
-  mockCategories,
-  mockCustomers,
-  mockNoticeLogs,
-  mockPipelines,
-  mockTasks,
-  mockUsers,
-} from "../mock/data";
+import { mockCategories, mockUsers } from "../mock/data";
 import type {
   Category,
   Consent,
@@ -29,15 +24,7 @@ import type {
   Task,
   User,
 } from "../types";
-import { addPeriod, canAutoRegen } from "../utils/regen";
-import { addDays, todayIso } from "../utils/calendar";
-import {
-  buildStages,
-  effectiveDue,
-  isAutoProduct,
-  isOverdue,
-  nextDueAt,
-} from "../utils/pipeline";
+import { buildStages } from "../utils/pipeline";
 import { getCurrentUser } from "./auth";
 import {
   canViewCustomer,
@@ -45,229 +32,100 @@ import {
   canViewTask,
 } from "../utils/permission";
 
-// 서버 지연을 흉내내는 작은 헬퍼 (로딩 상태 테스트용)
-function delay<T>(data: T, ms = 120): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(data), ms));
-}
+const API_BASE = "/api/crm";
 
-// 변경 가능한 복사본 (목 상태)
-let categories: Category[] = mockCategories.map((c) => ({ ...c }));
-let tasks: Task[] = mockTasks.map((t) => ({ ...t }));
-let customers: Customer[] = mockCustomers.map((c) => ({
-  ...c,
-  consent: { ...c.consent },
-}));
-let noticeLogs: NoticeLog[] = mockNoticeLogs.map((n) => ({ ...n }));
-
-// 파이프라인 깊은 복사(단계·지연 배열 포함)
-const clonePipeline = (p: Pipeline): Pipeline => ({
-  ...p,
-  stages: p.stages.map((s) => ({ ...s })),
-  delays: p.delays.map((d) => ({ ...d })),
-});
-let pipelines: Pipeline[] = mockPipelines.map(clonePipeline);
-
-// ID 생성용 카운터
-let categorySeq = 1;
-let taskSeq = 1;
-let pipelineSeq = 1;
-let noticeSeq = 1;
-const newCategoryId = () => `c-new-${categorySeq++}`;
-const newTaskId = () => `t-new-${taskSeq++}`;
-const newPipelineId = () => `p-new-${pipelineSeq++}`;
-
-// 단계별 지연(overdue) 상태를 오늘 기준으로 재계산
-function recalcOverdue(p: Pipeline): void {
-  p.stages.forEach((s) => {
-    s.isOverdue = isOverdue(s);
+async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(API_BASE + path, {
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    ...init,
   });
+  if (!res.ok) {
+    let msg = `${res.status}`;
+    try {
+      const j = await res.json();
+      msg = (j && j.error) || msg;
+    } catch {
+      // noop
+    }
+    throw new Error(`API ${path}: ${msg}`);
+  }
+  if (res.status === 204) return undefined as unknown as T;
+  return res.json() as Promise<T>;
 }
 
-export const CARRY_DEFAULT_ID = "c0"; // 삭제 불가 '기본' 카테고리
+// ── 카테고리 (mock 유지) ──
+let categories: Category[] = mockCategories.map((c) => ({ ...c }));
+let categorySeq = 1;
+const newCategoryId = () => `c-new-${categorySeq++}`;
+export const CARRY_DEFAULT_ID = "c0";
 
-/** 할 일 편집폼이 만들어 보내는 입력값 (id·완료상태·streak는 시스템이 채움) */
+/** 할 일 편집폼이 만들어 보내는 입력값 */
 export type TaskInput = Omit<Task, "id" | "done" | "doneAt" | "streak">;
 
 export const api = {
-  getUsers: (): Promise<User[]> => delay(mockUsers),
-  getCustomers: (): Promise<Customer[]> =>
-    delay(customers.map((c) => ({ ...c, consent: { ...c.consent } }))),
+  // ===== Users / Customers =====
+  getUsers: (): Promise<User[]> => Promise.resolve(mockUsers),
 
-  /** 고객 수신동의 수정 (계획서 §2.4-c) — 정보통신망법 근거 데이터 */
-  updateConsent: (customerId: string, consent: Consent): Promise<Customer> => {
-    customers = customers.map((c) =>
-      c.id === customerId ? { ...c, consent: { ...consent } } : c
-    );
-    const updated = customers.find((c) => c.id === customerId)!;
-    return delay({ ...updated, consent: { ...updated.consent } });
-  },
+  getCustomers: (): Promise<Customer[]> => http<Customer[]>("/customers"),
 
-  // ----- 카테고리 -----
+  updateConsent: (customerId: string, consent: Consent): Promise<Customer> =>
+    http<Customer>(`/customers/${customerId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ consent }),
+    }),
+
+  // ===== Categories (mock 유지) =====
   getCategories: (): Promise<Category[]> =>
-    delay(categories.map((c) => ({ ...c }))),
+    Promise.resolve(categories.map((c) => ({ ...c }))),
 
-  createCategory: (input: {
-    name: string;
-    parentId: string | null;
-    color: string;
-  }): Promise<Category> => {
-    const created: Category = {
-      id: newCategoryId(),
-      name: input.name.trim(),
-      parentId: input.parentId,
-      color: input.color,
-    };
+  createCategory: (input: { name: string; parentId: string | null; color: string }): Promise<Category> => {
+    const created: Category = { id: newCategoryId(), name: input.name.trim(), parentId: input.parentId, color: input.color };
     categories = [...categories, created];
-    return delay({ ...created });
+    return Promise.resolve({ ...created });
   },
 
-  updateCategory: (
-    id: string,
-    patch: { name?: string; color?: string }
-  ): Promise<Category> => {
+  updateCategory: (id: string, patch: { name?: string; color?: string }): Promise<Category> => {
     categories = categories.map((c) =>
       c.id === id
-        ? {
-            ...c,
-            ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
-            ...(patch.color !== undefined ? { color: patch.color } : {}),
-          }
-        : c
+        ? { ...c, ...(patch.name !== undefined ? { name: patch.name.trim() } : {}), ...(patch.color !== undefined ? { color: patch.color } : {}) }
+        : c,
     );
-    const updated = categories.find((c) => c.id === id)!;
-    return delay({ ...updated });
+    return Promise.resolve({ ...categories.find((c) => c.id === id)! });
   },
 
   deleteCategory: (id: string): Promise<{ deletedIds: string[] }> => {
-    if (id === CARRY_DEFAULT_ID) {
-      return Promise.reject(new Error("'기본' 카테고리는 삭제할 수 없습니다."));
-    }
-    const childIds = categories
-      .filter((c) => c.parentId === id)
-      .map((c) => c.id);
+    if (id === CARRY_DEFAULT_ID) return Promise.reject(new Error("'기본' 카테고리는 삭제할 수 없습니다."));
+    const childIds = categories.filter((c) => c.parentId === id).map((c) => c.id);
     const deletedIds = [id, ...childIds];
     categories = categories.filter((c) => !deletedIds.includes(c.id));
-    return delay({ deletedIds });
+    return Promise.resolve({ deletedIds });
   },
 
-  // ----- 할 일 -----
-  getTasks: (): Promise<Task[]> => delay(tasks.map((t) => ({ ...t }))),
+  // ===== Tasks =====
+  getTasks: (): Promise<Task[]> => http<Task[]>("/tasks"),
 
-  createTask: (input: TaskInput): Promise<Task> => {
-    const created: Task = {
-      ...input,
-      id: newTaskId(),
-      done: false,
-      doneAt: null,
-      streak: 0,
-    };
-    tasks = [...tasks, created];
-    return delay({ ...created });
-  },
+  createTask: (input: TaskInput): Promise<Task> =>
+    http<Task>("/tasks", { method: "POST", body: JSON.stringify(input) }),
 
-  updateTask: (id: string, patch: Partial<Task>): Promise<Task> => {
-    tasks = tasks.map((t) => (t.id === id ? { ...t, ...patch } : t));
-    const updated = tasks.find((t) => t.id === id)!;
-    return delay({ ...updated });
-  },
+  updateTask: (id: string, patch: Partial<Task>): Promise<Task> =>
+    http<Task>(`/tasks/${id}`, { method: "PUT", body: JSON.stringify(patch) }),
 
-  deleteTask: (id: string): Promise<void> => {
-    tasks = tasks.filter((t) => t.id !== id);
-    return delay(undefined);
-  },
+  deleteTask: (id: string): Promise<void> =>
+    http<void>(`/tasks/${id}`, { method: "DELETE" }),
 
-  /** 목록 드래그 재배치 (Sprint 16) — 순서 변경 + (다른 그룹이면) 카테고리 변경.
-   *  - id: 옮길 할 일
-   *  - toCategoryId: 편입할 카테고리 (같으면 순서만)
-   *  - beforeId: 이 할 일 "앞"에 놓는다. null이면 해당 카테고리 그룹의 맨 끝.
-   *  배열 순서 = 화면 표시 순서이므로 splice로 재배치한다. */
-  moveTask: (
-    id: string,
-    toCategoryId: string,
-    beforeId: string | null
-  ): Promise<Task> => {
-    const moving = tasks.find((t) => t.id === id);
-    if (!moving) return Promise.reject(new Error("할 일을 찾을 수 없습니다."));
-    // 카테고리 반영
-    const moved: Task = { ...moving, categoryId: toCategoryId };
-    // 목록에서 제거 후 삽입 위치 계산
-    const rest = tasks.filter((t) => t.id !== id);
-    let insertAt: number;
-    if (beforeId) {
-      insertAt = rest.findIndex((t) => t.id === beforeId);
-      if (insertAt < 0) insertAt = rest.length;
-    } else {
-      // 그룹 끝: 같은 카테고리 마지막 항목 다음
-      const lastIdx = rest.reduce(
-        (acc, t, i) => (t.categoryId === toCategoryId ? i : acc),
-        -1
-      );
-      insertAt = lastIdx < 0 ? rest.length : lastIdx + 1;
-    }
-    rest.splice(insertAt, 0, moved);
-    tasks = rest;
-    return delay({ ...moved });
-  },
+  toggleDone: (id: string, doneAtIso: string | null): Promise<Task> =>
+    http<Task>(`/tasks/${id}/toggle-done`, { method: "POST", body: JSON.stringify({ doneAt: doneAtIso }) }),
 
-  /** 완료 토글 (작업완료는 사용자 확인 클릭으로만 — 계획서 §4.2)
-   *  완료로 전환 + autoRegen + 주기형(매주/매월/매년)이면 다음 회차를 즉시 생성.
-   *  (실제 '리드타임 전 미리 생성' 스케줄링은 서버 몫 — 계획서 §5-B.3) */
-  toggleDone: (id: string, doneAtIso: string | null): Promise<Task> => {
-    const before = tasks.find((t) => t.id === id);
-    const willBeDone = before ? !before.done : false;
+  toggleHabitDone: (id: string, doneAtIso: string | null): Promise<Task> =>
+    http<Task>(`/tasks/${id}/toggle-habit`, { method: "POST", body: JSON.stringify({ doneAt: doneAtIso }) }),
 
-    tasks = tasks.map((t) =>
-      t.id === id
-        ? { ...t, done: !t.done, doneAt: !t.done ? doneAtIso : null }
-        : t
-    );
-    const updated = tasks.find((t) => t.id === id)!;
+  moveTask: (id: string, toCategoryId: string, beforeId: string | null): Promise<Task> =>
+    http<Task>(`/tasks/${id}/move`, { method: "POST", body: JSON.stringify({ toCategoryId, beforeId }) }),
 
-    // 완료로 전환되는 순간에만 재생성 (해제 시엔 생성 안 함 → 무한 루프 방지)
-    if (
-      willBeDone &&
-      updated.autoRegen &&
-      canAutoRegen(updated.repeat) &&
-      updated.endDate
-    ) {
-      const nextDue = addPeriod(updated.endDate, updated.repeat);
-      const regenerated: Task = {
-        ...updated,
-        id: newTaskId(),
-        endDate: nextDue,
-        done: false,
-        doneAt: null,
-        streak: updated.streak + 1, // 연속 달성 누적
-      };
-      tasks = [...tasks, regenerated];
-    }
-    return delay({ ...updated });
-  },
+  // ===== Pipelines =====
+  getPipelines: (): Promise<Pipeline[]> => http<Pipeline[]>("/pipelines"),
 
-  /** 습관 오늘 체크 토글 (계획서 §5-B.2) — 완료 시 streak+1, 해제 시 −1(최소 0).
-   *  공용 toggleDone과 분리해 할 일·캘린더 동작에 영향 주지 않는다. */
-  toggleHabitDone: (id: string, doneAtIso: string | null): Promise<Task> => {
-    tasks = tasks.map((t) => {
-      if (t.id !== id) return t;
-      const nowDone = !t.done;
-      return {
-        ...t,
-        done: nowDone,
-        doneAt: nowDone ? doneAtIso : null,
-        streak: nowDone ? t.streak + 1 : Math.max(0, t.streak - 1),
-      };
-    });
-    const updated = tasks.find((t) => t.id === id)!;
-    return delay({ ...updated });
-  },
-
-  // ----- 청약 파이프라인 (계획서 §2.2~2.5, §3) -----
-  getPipelines: (): Promise<Pipeline[]> => {
-    pipelines.forEach(recalcOverdue);
-    return delay(pipelines.map(clonePipeline));
-  },
-
-  /** 새 청약 시작 — 상품 템플릿 적용(자동차갱신이면 만기일 역산) */
   createPipeline: (input: {
     customerId: string;
     product: PipelineProduct;
@@ -275,207 +133,115 @@ export const api = {
     vehicleNo?: string | null;
     vehicleVin?: string | null;
   }): Promise<Pipeline> => {
-    const id = newPipelineId();
-    const startedAt = todayIso();
-    const maturityDate = input.maturityDate ?? null;
-    const created: Pipeline = {
-      id,
-      customerId: input.customerId,
-      product: input.product,
-      currentStage: 1,
-      startedAt,
-      status: "진행중",
-      maturityDate,
-      vehicleNo: isAutoProduct(input.product) ? input.vehicleNo ?? null : null,
-      vehicleVin: isAutoProduct(input.product) ? input.vehicleVin ?? null : null,
-      delays: [],
-      stages: buildStages(id, input.product, startedAt, maturityDate),
-    };
-    recalcOverdue(created);
-    pipelines = [...pipelines, created];
-    return delay(clonePipeline(created));
+    // stage 템플릿은 프론트 utils/pipeline 의 buildStages 결과를 그대로 전달
+    const tempId = "tmp"; // 백엔드가 진짜 id 할당
+    const today = new Date().toISOString().slice(0, 10);
+    const stages = buildStages(tempId, input.product, today, input.maturityDate ?? null).map((s) => ({
+      stage_no: s.stageNo,
+      name: s.name,
+      due_at: s.dueAt,
+    }));
+    return http<Pipeline>("/pipelines", {
+      method: "POST",
+      body: JSON.stringify({
+        customerId: input.customerId,
+        product: input.product,
+        maturityDate: input.maturityDate ?? null,
+        vehicleNo: input.vehicleNo ?? null,
+        vehicleVin: input.vehicleVin ?? null,
+        stages,
+      }),
+    });
   },
 
-  /** 단계 완료 — 다음 단계 마감 자동 산출, 마지막이면 상태 완료 (계획서 §3.1) */
-  completeStage: (
-    pipelineId: string,
-    stageNo: number,
-    doneAtIso: string
-  ): Promise<Pipeline> => {
-    const p = pipelines.find((x) => x.id === pipelineId)!;
-    const stage = p.stages.find((s) => s.stageNo === stageNo)!;
-    stage.done = true;
-    stage.doneAt = doneAtIso;
-    stage.isOverdue = false;
-    const next = p.stages.find((s) => s.stageNo === stageNo + 1);
-    if (next) {
-      p.currentStage = next.stageNo;
-      next.dueAt = nextDueAt(p.product, next.stageNo, doneAtIso, next.dueAt);
-    } else {
-      p.status = "완료";
-    }
-    recalcOverdue(p);
-    return delay(clonePipeline(p));
-  },
+  completeStage: (pipelineId: string, stageNo: number, doneAtIso: string): Promise<Pipeline> =>
+    http<Pipeline>(`/pipelines/${pipelineId}/stages/${stageNo}/complete`, {
+      method: "POST",
+      body: JSON.stringify({ doneAt: doneAtIso }),
+    }),
 
-  /** 연장(지연 처리) — 사유·기간 기록 + 해당 단계 마감 재설정 (계획서 §3.2) */
-  extendStage: (
-    pipelineId: string,
-    stageNo: number,
-    reason: string,
-    days: number
-  ): Promise<Pipeline> => {
-    const p = pipelines.find((x) => x.id === pipelineId)!;
-    const stage = p.stages.find((s) => s.stageNo === stageNo)!;
-    const base = effectiveDue(stage) ?? todayIso();
-    stage.extendedDueAt = addDays(base, days);
-    p.delays = [...p.delays, { stageNo, reason: reason.trim(), days }];
-    recalcOverdue(p);
-    return delay(clonePipeline(p));
-  },
+  extendStage: (pipelineId: string, stageNo: number, reason: string, days: number): Promise<Pipeline> =>
+    http<Pipeline>(`/pipelines/${pipelineId}/stages/${stageNo}/extend`, {
+      method: "POST",
+      body: JSON.stringify({ reason, days }),
+    }),
 
-  // ----- 통합검색 (Sprint 11) -----
-  /** 고객·할일·파이프라인 통합 검색.
-   *  결정사항(2026-05-31): 매칭 필드 1차 = 고객 이름·전화 / 할일 title /
-   *    파이프라인 차량번호·차대번호 + (간접) 고객 이름.
-   *  결정사항(2026-05-31): currentUser 권한 필터 적용 (대표=전체 / 그 외=본인 owner).
-   *  대소문자 무시 + 공백 trim. 빈 검색어는 빈 결과 반환.
-   */
-  searchAll: (query: string): Promise<SearchResult> => {
-    const q = (query ?? "").trim().toLowerCase();
-    if (!q) {
-      return delay({ customers: [], tasks: [], pipelines: [], total: 0 });
-    }
-    const user = getCurrentUser();
-    // Sprint 13: 비로그인 → 검색 결과 없음 (RequireAuth 가 막아도 안전 가드)
-    if (!user) {
-      return delay({ customers: [], tasks: [], pipelines: [], total: 0 });
-    }
-    const contains = (v: string | null | undefined): boolean =>
-      !!v && v.toLowerCase().includes(q);
+  // ===== Notice Logs =====
+  getNoticeLogs: (pipelineId?: string): Promise<NoticeLog[]> =>
+    http<NoticeLog[]>(`/notice-logs${pipelineId ? `?pipelineId=${encodeURIComponent(pipelineId)}` : ""}`),
 
-    // 고객 — 이름 / 전화
-    const customerHits: SearchHit[] = mockCustomers
-      .filter((c) => canViewCustomer(user, c))
-      .map<SearchHit | null>((c) => {
-        if (contains(c.name)) {
-          return { kind: "customer", id: c.id, title: c.name, subtitle: c.product, matched: "name" };
-        }
-        if (contains(c.phone)) {
-          return { kind: "customer", id: c.id, title: c.name, subtitle: c.phone, matched: "phone" };
-        }
-        return null;
-      })
-      .filter((h): h is SearchHit => h !== null);
-
-    // 할일 — title (권한 체크에 mockCustomers 필요)
-    const taskHits: SearchHit[] = tasks
-      .filter((t) => canViewTask(user, t, mockCustomers))
-      .map<SearchHit | null>((t) => {
-        if (contains(t.title)) {
-          const cust = t.customerId
-            ? mockCustomers.find((c) => c.id === t.customerId)
-            : null;
-          return {
-            kind: "task",
-            id: t.id,
-            title: t.title,
-            subtitle: cust ? cust.name : (t.endDate ?? undefined),
-            matched: "title",
-          };
-        }
-        return null;
-      })
-      .filter((h): h is SearchHit => h !== null);
-
-    // 파이프라인 — 차량번호 / 차대번호 / 고객 이름 (간접)
-    const pipelineHits: SearchHit[] = pipelines
-      .filter((p) => canViewPipeline(user, p, mockCustomers))
-      .map<SearchHit | null>((p) => {
-        const cust = mockCustomers.find((c) => c.id === p.customerId);
-        if (contains(p.vehicleNo)) {
-          return {
-            kind: "pipeline",
-            id: p.id,
-            title: `🚗 ${p.vehicleNo}`,
-            subtitle: cust ? `${cust.name} · ${p.product}` : p.product,
-            matched: "vehicleNo",
-          };
-        }
-        if (contains(p.vehicleVin)) {
-          return {
-            kind: "pipeline",
-            id: p.id,
-            title: `🚗 차대 ${p.vehicleVin}`,
-            subtitle: cust ? `${cust.name} · ${p.product}` : p.product,
-            matched: "vehicleVin",
-          };
-        }
-        if (cust && contains(cust.name)) {
-          return {
-            kind: "pipeline",
-            id: p.id,
-            title: `${cust.name} · ${p.product}`,
-            subtitle: `단계 ${p.currentStage}/${p.stages.length}`,
-            matched: "customerName",
-          };
-        }
-        return null;
-      })
-      .filter((h): h is SearchHit => h !== null);
-
-    const result: SearchResult = {
-      customers: customerHits,
-      tasks: taskHits,
-      pipelines: pipelineHits,
-      total: customerHits.length + taskHits.length + pipelineHits.length,
-    };
-    return delay(result);
-  },
-
-  // ----- 안내 기록 (계획서 §2.4-b) -----
-  /** 안내 기록 조회. pipelineId 주면 해당 청약만, 없으면 전체(모아보기 화면용) */
-  getNoticeLogs: (pipelineId?: string): Promise<NoticeLog[]> => {
-    const list = pipelineId
-      ? noticeLogs.filter((n) => n.pipelineId === pipelineId)
-      : noticeLogs;
-    // 최신순 정렬
-    const sorted = [...list].sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1));
-    return delay(sorted.map((n) => ({ ...n })));
-  },
-
-  /** 안내 기록 추가 — 일시·작성자는 시스템 자동 기록(위변조 방지) */
   addNoticeLog: (input: {
     pipelineId: string;
     stageNo: number;
     channel: NoticeChannel;
     memo: string;
-  }): Promise<NoticeLog> => {
-    const created: NoticeLog = {
-      id: `nl-new-${noticeSeq++}`,
-      pipelineId: input.pipelineId,
-      stageNo: input.stageNo,
-      channel: input.channel,
-      memo: input.memo.trim(),
-      sentAt: new Date().toISOString(), // 자동
-      createdBy: getCurrentUser()?.id ?? "unknown", // 자동
+  }): Promise<NoticeLog> =>
+    http<NoticeLog>("/notice-logs", { method: "POST", body: JSON.stringify(input) }),
+
+  updateNoticeLog: (id: string, memo: string): Promise<NoticeLog> =>
+    http<NoticeLog>(`/notice-logs/${id}`, { method: "PUT", body: JSON.stringify({ memo }) }),
+
+  deleteNoticeLog: (id: string): Promise<void> =>
+    http<void>(`/notice-logs/${id}`, { method: "DELETE" }),
+
+  // ===== Search (프론트 측 substring, 결정사항 §) =====
+  searchAll: async (query: string): Promise<SearchResult> => {
+    const q = (query ?? "").trim().toLowerCase();
+    if (!q) return { customers: [], tasks: [], pipelines: [], total: 0 };
+    const user = getCurrentUser();
+    if (!user) return { customers: [], tasks: [], pipelines: [], total: 0 };
+
+    // 서버가 이미 권한 필터를 적용한 데이터만 반환 → 추가 권한 체크 불필요
+    // (안전 가드로 프론트도 한 번 더 — 통일성)
+    const [allCustomers, allTasks, allPipelines] = await Promise.all([
+      api.getCustomers(),
+      api.getTasks(),
+      api.getPipelines(),
+    ]);
+    const contains = (v: string | null | undefined): boolean => !!v && v.toLowerCase().includes(q);
+
+    const customerHits: SearchHit[] = allCustomers
+      .filter((c) => canViewCustomer(user, c))
+      .map<SearchHit | null>((c) => {
+        if (contains(c.name)) return { kind: "customer", id: c.id, title: c.name, subtitle: c.product, matched: "name" };
+        if (contains(c.phone)) return { kind: "customer", id: c.id, title: c.name, subtitle: c.phone, matched: "phone" };
+        return null;
+      })
+      .filter((h): h is SearchHit => h !== null);
+
+    const taskHits: SearchHit[] = allTasks
+      .filter((t) => canViewTask(user, t, allCustomers))
+      .map<SearchHit | null>((t) => {
+        if (contains(t.title)) {
+          const cust = t.customerId ? allCustomers.find((c) => c.id === t.customerId) : null;
+          return { kind: "task", id: t.id, title: t.title, subtitle: cust ? cust.name : (t.endDate ?? undefined), matched: "title" };
+        }
+        return null;
+      })
+      .filter((h): h is SearchHit => h !== null);
+
+    const pipelineHits: SearchHit[] = allPipelines
+      .filter((p) => canViewPipeline(user, p, allCustomers))
+      .map<SearchHit | null>((p) => {
+        const cust = allCustomers.find((c) => c.id === p.customerId);
+        if (contains(p.vehicleNo)) {
+          return { kind: "pipeline", id: p.id, title: `🚗 ${p.vehicleNo}`, subtitle: cust ? `${cust.name} · ${p.product}` : p.product, matched: "vehicleNo" };
+        }
+        if (contains(p.vehicleVin)) {
+          return { kind: "pipeline", id: p.id, title: `🚗 차대 ${p.vehicleVin}`, subtitle: cust ? `${cust.name} · ${p.product}` : p.product, matched: "vehicleVin" };
+        }
+        if (cust && contains(cust.name)) {
+          return { kind: "pipeline", id: p.id, title: `${cust.name} · ${p.product}`, subtitle: `단계 ${p.currentStage}/${p.stages.length}`, matched: "customerName" };
+        }
+        return null;
+      })
+      .filter((h): h is SearchHit => h !== null);
+
+    return {
+      customers: customerHits,
+      tasks: taskHits,
+      pipelines: pipelineHits,
+      total: customerHits.length + taskHits.length + pipelineHits.length,
     };
-    noticeLogs = [...noticeLogs, created];
-    return delay({ ...created });
-  },
-
-  /** 안내 메모 수정 (모아보기 화면 편집용). 일시·작성자·수단·단계는 불변 */
-  updateNoticeLog: (id: string, memo: string): Promise<NoticeLog> => {
-    noticeLogs = noticeLogs.map((n) =>
-      n.id === id ? { ...n, memo: memo.trim() } : n
-    );
-    const updated = noticeLogs.find((n) => n.id === id)!;
-    return delay({ ...updated });
-  },
-
-  /** 안내 기록 삭제 */
-  deleteNoticeLog: (id: string): Promise<void> => {
-    noticeLogs = noticeLogs.filter((n) => n.id !== id);
-    return delay(undefined);
   },
 };
