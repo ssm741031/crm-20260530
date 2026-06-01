@@ -11,6 +11,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest", // Sprint 19: 커스텀 SW (push 핸들러 포함)
+      srcDir: "src",
+      filename: "sw.ts",
+      injectManifest: {
+        // 빌드 출력은 sw.js (vite-plugin-pwa 가 ts → js 컴파일)
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
+      },
       includeAssets: [
         "icons/favicon.ico",
         "icons/apple-touch-icon-180x180.png",
@@ -44,15 +51,11 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        // SPA fallback — 클라이언트 라우트(e.g. /crm/tasks) 새로고침 시 index.html 반환
-        navigateFallback: "/crm/index.html",
-        // /api 요청은 캐싱 X (서버 응답 그대로)
-        navigateFallbackDenylist: [/^\/api\//],
-      },
+      // injectManifest 모드에서는 workbox 설정은 src/sw.ts 안에서 처리
       devOptions: {
         // dev 모드에서도 SW 등록 (개발 중 테스트)
         enabled: false, // 1차는 false. true 로 바꾸면 dev 에서도 SW 등록
+        type: "module", // injectManifest 모드에서 dev SW 는 module 타입 필요
       },
     }),
   ],

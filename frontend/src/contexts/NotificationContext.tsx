@@ -17,6 +17,7 @@ import {
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { subscribePush, unsubscribePush } from "../api/push";
 import { useAuth } from "../hooks/useAuth";
 import {
   buildReminderText,
@@ -87,11 +88,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const result = await window.Notification.requestPermission();
       const state = result as PermissionState;
       setPermission(state);
+      // Sprint 19: 권한 허용되면 자동으로 Web Push 구독
+      if (state === "granted") {
+        subscribePush().catch((err) => {
+          console.warn("[push] subscribe failed:", err);
+        });
+      }
       return state;
     } catch {
       return "denied";
     }
   }, []);
+
+  // Sprint 19: 로그인 후 권한 이미 granted 인데 서버 구독이 끊겼을 수 있음 → 재등록 시도
+  useEffect(() => {
+    if (!user) return;
+    if (permission !== "granted") return;
+    subscribePush().catch(() => undefined);
+  }, [user, permission]);
+
+  // Sprint 19: 로그아웃 시 구독 해제 (다른 사용자 기기와 섞이는 것 방지)
+  useEffect(() => {
+    if (user) return;
+    unsubscribePush().catch(() => undefined);
+  }, [user]);
 
   // ── 알람 발사 ──
   const fireReminder = useCallback(
