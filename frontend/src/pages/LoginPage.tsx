@@ -1,102 +1,66 @@
-/* LoginPage (Sprint 13)
- * mock 로그인 폼 — DEV ONLY 안내 포함
- * 로그인 성공 시 from 으로 이동 (없으면 /tasks)
+/* LoginPage (B안: 고보험 SSO 안내 페이지)
+ * id/pw 폼 제거 — 고보험에서 로그인하고 사내CRM 버튼으로 진입하라는 안내
  */
-import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import * as authApi from "../api/auth";
 import "./LoginPage.css";
 
-interface FromState {
-  from?: string;
-}
+const GOBOHEOM_URL = "https://goboheom.com/";
 
 export default function LoginPage() {
-  const { login, user } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = (location.state as FromState | null)?.from || "/tasks";
 
-  const [loginId, setLoginId] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  // 이미 로그인 상태면 from 으로 이동 (함수 본체에서 navigate 호출은 안티패턴 → useEffect)
+  // 이미 로그인된 상태면 /tasks 로
   useEffect(() => {
-    if (user) {
-      navigate(from, { replace: true });
-    }
-  }, [user, from, navigate]);
+    if (user) navigate("/tasks", { replace: true });
+  }, [user, navigate]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-    setError("");
-    setSubmitting(true);
-    try {
-      const result = await login(loginId.trim(), password);
-      if (result.ok) {
-        navigate(from, { replace: true });
-      } else {
-        setError(result.error || "로그인에 실패했습니다.");
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // 페이지 진입 시 SSO 자동 시도 (고보험 토큰이 있는 경우)
+  useEffect(() => {
+    let cancelled = false;
+    authApi.ssoLogin().then((u) => {
+      if (cancelled) return;
+      if (u) navigate("/tasks", { replace: true });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 className="login-title">사내 CRM 로그인</h1>
+        <h1 className="login-title">사내 CRM</h1>
         <p className="login-subtitle">
-          ⚠️ <strong>DEV mock</strong> — 백엔드 완성 전 임시 인증입니다.
+          고보험 로그인 후 헤더의 <strong>사내CRM</strong> 버튼으로 진입하세요.
         </p>
-        <form onSubmit={handleSubmit} className="login-form">
-          <label className="login-field">
-            <span className="login-field__label">아이디</span>
-            <input
-              type="text"
-              autoComplete="username"
-              value={loginId}
-              onChange={(e) => setLoginId(e.target.value)}
-              placeholder="예: sales1"
-              required
-              autoFocus
-              className="login-input"
-            />
-          </label>
-          <label className="login-field">
-            <span className="login-field__label">비밀번호</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="DEV: 1234"
-              required
-              className="login-input"
-            />
-          </label>
-          {error ? <div className="login-error">{error}</div> : null}
-          <button
-            type="submit"
+        <ol className="login-steps">
+          <li>
+            <a href={GOBOHEOM_URL} target="_blank" rel="noopener noreferrer">
+              고보험 사이트
+            </a>
+            에서 로그인
+          </li>
+          <li>화면 상단의 <strong>사내CRM ↗</strong> 클릭</li>
+          <li>화이트리스트(사내 사용자)에 등록된 휴대폰이면 자동 진입</li>
+        </ol>
+        <div className="login-actions">
+          <a
+            href={GOBOHEOM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="login-submit"
-            disabled={submitting || !loginId || !password}
+            style={{ textDecoration: "none", textAlign: "center", display: "block" }}
           >
-            {submitting ? "로그인 중…" : "로그인"}
-          </button>
-        </form>
-        <div className="login-hint">
-          <p className="login-hint__title">DEV 계정 (모두 pw: 1234)</p>
-          <ul className="login-hint__list">
-            <li><code>boss</code> — 대표 (전체 권한)</li>
-            <li><code>lead1</code> — 김팀장</li>
-            <li><code>sales1</code> — 이영업 (팀원)</li>
-          </ul>
+            고보험으로 이동
+          </a>
         </div>
+        <p className="login-hint" style={{ marginTop: 16 }}>
+          접근 권한이 없다는 메시지가 뜬다면 관리자에게 문의 (휴대폰번호 등록 필요).
+        </p>
       </div>
     </div>
   );

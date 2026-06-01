@@ -122,3 +122,18 @@
   border-radius: 4px;
   font-size: 11px;
 }
+
+/* B안 안내 페이지 추가 스타일 */
+.login-steps {
+  margin: 12px 0 8px 0;
+  padding-left: 22px;
+  font-size: 13px;
+  color: var(--text-strong, #1f2937);
+  line-height: 1.7;
+}
+.login-steps a {
+  color: var(--color-primary, #3b82f6);
+  font-weight: 600;
+  text-decoration: none;
+}
+.login-steps a:hover { text-decoration: underline; }
