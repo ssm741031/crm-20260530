@@ -1,45 +1,55 @@
 /* ============================================================
-   인증 API (Sprint 13 — mock 기반 골격)
+   인증 API — Sprint 01 백엔드 fetch (Sprint 13 mock 교체)
 
-   ⚠️ DEV ONLY mock 구현입니다.
-   - Sprint 01 (이팀장 백엔드) 완성 시 이 파일의 함수 내부만
-     "fetch('/api/login')" 등으로 교체 → 화면 코드 변경 0.
-   - api/ 단일 통로 결정에 따라, 다른 모든 화면은 useAuth()/getCurrentUser()
-     를 호출만 함.
+   백엔드: /api/crm/{login,logout,me} (Express, JWT in httpOnly cookie)
+   - 쿠키 자동 첨부 위해 fetch credentials: 'include'
+   - getCurrentUser() 는 동기 (메모리 캐시) — AuthContext 가 restoreSession() 으로 초기화
 
-   결정사항(2026-05-31):
-   - mock pw 전부 "1234" 통일 (boss/lead1/sales1) — DEV ONLY
-   - 세션 저장: localStorage (백엔드 완성 시 httpOnly 쿠키 재결정)
-   - dev 토글 setMockCurrentUserForDev 유지 + import.meta.env.DEV 가드
+   - dev 토글 setMockCurrentUserForDev: import.meta.env.DEV 가드 유지하나,
+     백엔드 인증이 있을 땐 의미 없음 (서버 세션이 진실의 원천)
    ============================================================ */
-import { mockUsers } from "../mock/data";
 import type { User } from "../types";
 
-const STORAGE_KEY = "crm.session.v1"; // { userId: string }
-const MOCK_DEV_PASSWORD = "1234";       // DEV ONLY — 백엔드 완성 시 폐기
+const API_BASE = "/api/crm";
 
-// 메모리 캐시 (페이지 단위) — 인증된 user OR dev 토글로 설정된 user
+// 메모리 캐시 — restoreSession/login 성공 시 채워짐
 let _currentUser: User | null = null;
 
-/** 새로고침 시 localStorage 에서 세션 복원 (AuthProvider 초기 useEffect 에서 호출) */
-export function restoreSession(): User | null {
-  if (typeof window === "undefined") return null;
+async function jsonFetch<T = unknown>(
+  path: string,
+  init?: RequestInit,
+): Promise<{ ok: boolean; status: number; data: T | null }> {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { userId?: string };
-    if (!parsed.userId) return null;
-    const user = mockUsers.find((u) => u.id === parsed.userId);
-    if (user) {
-      _currentUser = user;
-      return user;
+    const res = await fetch(API_BASE + path, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      ...init,
+    });
+    let data: T | null = null;
+    if (res.status !== 204) {
+      try {
+        data = (await res.json()) as T;
+      } catch {
+        data = null;
+      }
     }
-    // 저장된 ID 가 mockUsers 와 불일치 → 손상 → 클리어
-    window.localStorage.removeItem(STORAGE_KEY);
-    return null;
+    return { ok: res.ok, status: res.status, data };
   } catch {
-    return null;
+    return { ok: false, status: 0, data: null };
   }
+}
+
+/** 새로고침 시 백엔드에 세션 확인 (cookie 자동 첨부)
+ *  성공(200) → user 반환 + 캐시 / 401 → null + 캐시 비움
+ */
+export async function restoreSession(): Promise<User | null> {
+  const res = await jsonFetch<User>("/me");
+  if (res.ok && res.data) {
+    _currentUser = res.data;
+    return res.data;
+  }
+  _currentUser = null;
+  return null;
 }
 
 export interface LoginResult {
@@ -48,55 +58,41 @@ export interface LoginResult {
   error?: string;
 }
 
-/** mock 로그인 — loginId + password 매칭, 성공 시 localStorage 저장 */
+/** 로그인 — 성공 시 쿠키 자동 설정 + 메모리 캐시 */
 export async function login(loginId: string, password: string): Promise<LoginResult> {
-  // mock 지연 (서버 응답 흉내 — 백엔드 완성 시 fetch 로 교체)
-  await new Promise((r) => setTimeout(r, 200));
-
-  const user = mockUsers.find((u) => u.loginId === loginId);
-  if (!user || password !== MOCK_DEV_PASSWORD) {
-    return { ok: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." };
+  const res = await jsonFetch<{ user?: User; error?: string }>("/login", {
+    method: "POST",
+    body: JSON.stringify({ loginId, password }),
+  });
+  if (res.ok && res.data && res.data.user) {
+    _currentUser = res.data.user;
+    return { ok: true, user: res.data.user };
   }
-
-  _currentUser = user;
-  try {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ userId: user.id }),
-    );
-  } catch {
-    // localStorage 차단 시에도 메모리 세션은 유지
-  }
-  return { ok: true, user };
+  const message = (res.data && (res.data as { error?: string }).error) || "로그인에 실패했습니다.";
+  return { ok: false, error: message };
 }
 
-/** 로그아웃 — 세션 클리어 */
-export function logout(): void {
+/** 로그아웃 — 백엔드가 쿠키 만료 + 메모리 캐시 클리어 */
+export async function logout(): Promise<void> {
+  await jsonFetch("/logout", { method: "POST" });
   _currentUser = null;
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // noop
-  }
 }
 
-/** 현재 로그인 사용자 — Sprint 11 권한 필터(canViewCustomer 등) 가 호출
- *  반환: User OR null (비로그인). 1차 한계로 호출 측에서 null 처리 필요.
- *  Sprint 11 시점엔 항상 mock u3 반환했으나, Sprint 13부터 진짜 인증 기반.
+/** 현재 사용자 (동기) — Sprint 11 권한 헬퍼(canViewCustomer 등)에서 사용
+ *  진짜 출처는 백엔드 me 응답. 메모리 캐시 반환.
+ *  AuthContext 가 마운트 시 restoreSession 으로 캐시 채움.
  */
 export function getCurrentUser(): User | null {
   return _currentUser;
 }
 
-/** dev 전용 — 운영 모드(import.meta.env.DEV=false)에선 no-op */
-export function setMockCurrentUserForDev(userId: string): void {
+/** dev 전용 — 운영 모드(import.meta.env.DEV=false)에선 no-op
+ *  백엔드 인증 시대엔 실제 세션이 진실의 원천 — 이 함수는 dev에서만 의미 있음
+ */
+export function setMockCurrentUserForDev(_userId: string): void {
   if (!import.meta.env.DEV) {
     console.warn("[auth] setMockCurrentUserForDev is dev-only — ignored in production");
     return;
   }
-  const u = mockUsers.find((x) => x.id === userId);
-  if (u) {
-    _currentUser = u;
-    console.log("[auth][dev] currentUser set to", u.loginId);
-  }
+  console.warn("[auth][dev] setMockCurrentUserForDev: 백엔드 인증이 활성화돼 있어 효과 제한적");
 }

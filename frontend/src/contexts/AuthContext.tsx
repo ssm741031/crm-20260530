@@ -23,11 +23,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 새로고침 시 localStorage 복원
+  // 새로고침 시 백엔드 세션 확인 (Sprint 01 백엔드: GET /api/crm/me)
+  // 이전 mock 구현은 동기 localStorage 였으나, 백엔드 fetch 는 비동기
   useEffect(() => {
-    const restored = authApi.restoreSession();
-    setUser(restored);
-    setLoading(false);
+    let cancelled = false;
+    authApi.restoreSession().then((restored) => {
+      if (cancelled) return;
+      setUser(restored);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = useCallback(async (loginId: string, password: string) => {
@@ -40,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    authApi.logout();
+    // 백엔드 fetch 는 fire-and-forget — 화면은 즉시 로그아웃 처리
+    authApi.logout().catch((err) => console.warn("[logout] error:", err));
     setUser(null);
   }, []);
 
