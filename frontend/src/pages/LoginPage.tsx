@@ -1,34 +1,39 @@
-/* LoginPage (B안: 고보험 SSO 안내 페이지)
- * id/pw 폼 제거 — 고보험에서 로그인하고 사내CRM 버튼으로 진입하라는 안내
+/* LoginPage (B안 + 무한 루프 방지)
+ * - 자동 ssoLogin 제거 (AuthContext 가 마운트 시 1회 자동 시도)
+ * - 로그아웃 후엔 "지금 진입 시도" 버튼으로 사용자 명시적 재시도
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import * as authApi from "../api/auth";
 import "./LoginPage.css";
 
 const GOBOHEOM_URL = "https://goboheom.com/";
 
 export default function LoginPage() {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [tryingSso, setTryingSso] = useState(false);
 
-  // 이미 로그인된 상태면 /tasks 로
+  // user 있으면 /tasks 로 자동 이동 (다른 경로에서 user 채워졌을 때)
   useEffect(() => {
     if (user) navigate("/tasks", { replace: true });
   }, [user, navigate]);
 
-  // 페이지 진입 시 SSO 자동 시도 (고보험 토큰이 있는 경우)
-  useEffect(() => {
-    let cancelled = false;
-    authApi.ssoLogin().then((u) => {
-      if (cancelled) return;
-      if (u) navigate("/tasks", { replace: true });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [navigate]);
+  const handleEnter = async () => {
+    if (tryingSso) return;
+    setError("");
+    setTryingSso(true);
+    try {
+      const res = await login("", ""); // ssoLogin (id/pw 무시)
+      if (!res.ok) {
+        setError(res.error || "고보험 로그인 후 다시 시도하세요.");
+      }
+      // 성공 시 user state 업데이트 → 위 useEffect 가 /tasks 이동
+    } finally {
+      setTryingSso(false);
+    }
+  };
 
   return (
     <div className="login-page">
@@ -39,27 +44,31 @@ export default function LoginPage() {
         </p>
         <ol className="login-steps">
           <li>
-            <a href={GOBOHEOM_URL} target="_blank" rel="noopener noreferrer">
-              고보험 사이트
-            </a>
-            에서 로그인
+            <a href={GOBOHEOM_URL}>고보험 사이트</a>에서 로그인
           </li>
           <li>화면 상단의 <strong>사내CRM ↗</strong> 클릭</li>
           <li>화이트리스트(사내 사용자)에 등록된 휴대폰이면 자동 진입</li>
         </ol>
+        {error ? <div className="login-error">{error}</div> : null}
         <div className="login-actions">
+          <button
+            type="button"
+            className="login-submit"
+            onClick={handleEnter}
+            disabled={tryingSso}
+          >
+            {tryingSso ? "진입 시도 중…" : "지금 진입 시도"}
+          </button>
           <a
             href={GOBOHEOM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="login-submit"
-            style={{ textDecoration: "none", textAlign: "center", display: "block" }}
+            className="login-secondary"
+            style={{ display: "block", textAlign: "center", marginTop: 8, fontSize: 13 }}
           >
             고보험으로 이동
           </a>
         </div>
         <p className="login-hint" style={{ marginTop: 16 }}>
-          접근 권한이 없다는 메시지가 뜬다면 관리자에게 문의 (휴대폰번호 등록 필요).
+          "접근 권한이 없습니다" 메시지가 뜨면 관리자에게 휴대폰 등록을 요청하세요.
         </p>
       </div>
     </div>
