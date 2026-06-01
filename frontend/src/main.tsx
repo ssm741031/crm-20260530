@@ -18,7 +18,21 @@ import SearchPage from "./pages/SearchPage";
 import LoginPage from "./pages/LoginPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import RequireAuth from "./components/RequireAuth";
+import { registerSW } from "virtual:pwa-register";
 import "./index.css";
+
+// Sprint 15: PWA Service Worker 등록 (silent autoUpdate)
+// 새 버전 배포 시 사용자가 다음 방문에서 자연스럽게 업데이트
+registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    // 1차는 silent. Sprint 16 에서 토스트 안내 검토.
+    console.log("[pwa] new version available — will auto-update on next reload");
+  },
+  onOfflineReady() {
+    console.log("[pwa] offline ready");
+  },
+});
 
 // Sprint 12: 고보험 서버 /crm 패스 서브배포 — basename 적용
 // Sprint 13: AuthProvider + /login + RequireAuth 로 보호 라우트 감싸기
